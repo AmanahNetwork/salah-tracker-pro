@@ -1,11 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import API from '../api/axios'; 
-import { Moon, Activity, BarChart3, PieChart as PieIcon, Save, CheckCircle } from 'lucide-react';
-import { Line, Pie, Bar } from 'react-chartjs-2';
+import { Moon, CheckCircle, Loader2, Activity, PieChart as PieIcon, BarChart3 } from 'lucide-react';
+import { Pie, Bar, Line } from 'react-chartjs-2';
 import { 
-  Chart as ChartJS, 
-  CategoryScale, LinearScale, PointElement, LineElement, 
-  BarElement, ArcElement, Title, Tooltip, Legend 
+  Chart as ChartJS, CategoryScale, LinearScale, PointElement, 
+  LineElement, BarElement, ArcElement, Title, Tooltip, Legend 
 } from 'chart.js';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, ArcElement, Title, Tooltip, Legend);
@@ -13,12 +12,11 @@ ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarEleme
 const Dashboard = () => {
   const [history, setHistory] = useState([]);
   const [sleep, setSleep] = useState(7);
-  const [manualProductivity, setManualProductivity] = useState(50);
+  const [prod, setProd] = useState(50);
   const [salah, setSalah] = useState({ fajr: 0, dhuhr: 0, asr: 0, maghrib: 0, isha: 0 });
   const [viewMode, setViewMode] = useState('month');
-  const [showSuccess, setShowSuccess] = useState(false);
-  
-  const username = localStorage.getItem('username') || 'User';
+  const [isSubmitting, setIsSubmitting] = useState(false); 
+
   const today = new Date().toISOString().split('T')[0];
 
   const fetchHistory = useCallback(async () => {
@@ -33,13 +31,10 @@ const Dashboard = () => {
     }
   }, []);
 
-  useEffect(() => { 
-    fetchHistory(); 
-  }, [fetchHistory]);
+  useEffect(() => { fetchHistory(); }, [fetchHistory]);
 
   const isAlreadyLogged = history.some(log => new Date(log.date).toISOString().split('T')[0] === today);
 
-  // Filters history based on active viewMode
   const filteredHistory = history.filter(log => {
     const logDate = new Date(log.date);
     const offset = viewMode === 'week' ? 7 : viewMode === 'month' ? 30 : 365;
@@ -48,41 +43,44 @@ const Dashboard = () => {
     return logDate >= limit;
   });
 
-  // Calculate percentages for the top summary cards
+  // --- LOGIC FOR PERCENTAGE BARS ---
   const stats = (() => {
     if (filteredHistory.length === 0) return { sleep: "0", prod: "0", salah: "0" };
     
-    const totalSalahPossible = filteredHistory.length * 5;
-    const offeredCount = filteredHistory.reduce((acc, log) => 
+    // Salah %: Count any non-missed (1, 2, or 3) prayer
+    const offered = filteredHistory.reduce((acc, log) => 
       acc + Object.values(log.salah || {}).filter(v => v > 0).length, 0);
     
-    const avgSleep = filteredHistory.reduce((acc, l) => acc + (l.sleepHours || 0), 0) / filteredHistory.length;
+    // Sleep %: (Total Hours / (Days * 24)) * 100
+    const totalSleep = filteredHistory.reduce((acc, l) => acc + (l.sleepHours || 0), 0);
+    const totalAvailableHours = filteredHistory.length * 24;
+    
+    // Productivity %: Direct average of logged values
     const avgProd = filteredHistory.reduce((acc, l) => acc + (l.productivityPercentage || 0), 0) / filteredHistory.length;
 
     return {
-      salah: ((offeredCount / totalSalahPossible) * 100).toFixed(1),
-      sleep: ((avgSleep / 24) * 100).toFixed(1),
+      salah: ((offered / (filteredHistory.length * 5)) * 100).toFixed(1),
+      sleep: ((totalSleep / totalAvailableHours) * 100).toFixed(1),
       prod: avgProd.toFixed(1)
     };
   })();
 
-  const saveDailyData = async () => {
+  const handleSave = async () => {
+    if (isSubmitting || isAlreadyLogged) return;
+    setIsSubmitting(true);
     try {
-      await API.post('/api/logs/daily', { salah, sleepHours: sleep, productivityPercentage: manualProductivity, date: today });
-      setShowSuccess(true);
-      fetchHistory();
-      setTimeout(() => setShowSuccess(false), 3000);
-    } catch (err) {
-      console.error("Save error", err);
-    }
+      await API.post('/api/logs/daily', { 
+        salah, 
+        sleepHours: sleep, 
+        productivityPercentage: prod, 
+        date: today 
+      });
+      await fetchHistory();
+    } catch (err) { console.error(err); } 
+    finally { setIsSubmitting(false); }
   };
 
-  const chartLabels = filteredHistory.map(log => {
-    const d = new Date(log.date);
-    return viewMode === 'year' ? d.toLocaleDateString('en-US', { month: 'short' }) : d.toLocaleDateString('en-US', { day: 'numeric', month: 'short' });
-  });
-
-  const salahStats = (() => {
+  const salahStats = () => {
     let counts = { Jamat: 0, Individual: 0, Qaza: 0, Missed: 0 };
     filteredHistory.forEach(log => {
       Object.values(log.salah || {}).forEach(val => {
@@ -93,105 +91,108 @@ const Dashboard = () => {
       });
     });
     return [counts.Jamat, counts.Individual, counts.Qaza, counts.Missed];
-  })();
+  };
+
+  const chartLabels = filteredHistory.map(l => new Date(l.date).toLocaleDateString('en-US', { day: 'numeric', month: 'short' }));
 
   return (
-    <div className="dashboard-container">
-      <div className="top-header-slot">
-        <img src="/logo.png" alt="Logo" className="header-logo" />
-        <div className="user-controls">
-          <p>Welcome, <span style={{ color: '#10b981', fontWeight: 'bold' }}>{username}</span></p>
-          <button onClick={() => { localStorage.removeItem('token'); window.location.reload(); }} className="logout-btn">Logout</button>
+    <div style={{ padding: '15px', maxWidth: '500px', margin: '0 auto', color: 'white', paddingBottom: '50px' }}>
+      
+      {/* 1. TOP PERCENTAGE BARS */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', marginBottom: '20px' }}>
+        <div className="glass-card" style={{ textAlign: 'center', padding: '10px' }}>
+          <p style={{ fontSize: '0.6rem', color: '#94a3b8', margin: 0 }}>SALAH</p>
+          <h3 style={{ color: '#10b981', margin: '5px 0' }}>{stats.salah}%</h3>
+        </div>
+        <div className="glass-card" style={{ textAlign: 'center', padding: '10px' }}>
+          <p style={{ fontSize: '0.6rem', color: '#94a3b8', margin: 0 }}>DAY SLEPT</p>
+          <h3 style={{ color: '#3b82f6', margin: '5px 0' }}>{stats.sleep}%</h3>
+        </div>
+        <div className="glass-card" style={{ textAlign: 'center', padding: '10px' }}>
+          <p style={{ fontSize: '0.6rem', color: '#94a3b8', margin: 0 }}>PRODUCTIVE</p>
+          <h3 style={{ color: '#f59e0b', margin: '5px 0' }}>{stats.prod}%</h3>
         </div>
       </div>
 
-      {showSuccess && <div className="success-toast"><CheckCircle size={20} /> <span>Progress Saved!</span></div>}
-
-      <div className="glass-card">
-        <h2>Daily Check-in</h2>
+      {/* 2. DAILY INPUT */}
+      <div className="glass-card" style={{ padding: '20px', marginBottom: '20px' }}>
         {isAlreadyLogged ? (
-          <div style={{ textAlign: 'center', color: '#10b981' }}><CheckCircle size={24} /><p>Today's Entry Completed</p></div>
+          <div style={{ textAlign: 'center', color: '#10b981' }}><CheckCircle style={{ margin: '0 auto 5px' }} /><p>Daily Entry Synced</p></div>
         ) : (
           <>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '15px' }}>
               <div>
-                <p style={{ fontSize: '0.85rem' }}><Moon size={14} color="#3b82f6" /> Sleep: **{sleep}h**</p>
-                <input type="range" min="0" max="24" step="0.5" value={sleep} onChange={(e) => setSleep(parseFloat(e.target.value))} style={{width:'100%'}}/>
+                <p style={{ fontSize: '0.75rem', marginBottom: '5px' }}><Moon size={14}/> {sleep}h Sleep</p>
+                <input type="range" min="0" max="24" step="0.5" value={sleep} onChange={(e) => setSleep(parseFloat(e.target.value))} style={{ width: '100%' }} />
               </div>
               <div>
-                <p style={{ fontSize: '0.85rem' }}><Activity size={14} color="#f59e0b" /> Prod: **{manualProductivity}%**</p>
-                <input type="range" min="0" max="100" value={manualProductivity} onChange={(e) => setManualProductivity(parseInt(e.target.value))} style={{width:'100%'}}/>
+                <p style={{ fontSize: '0.75rem', marginBottom: '5px' }}><Activity size={14}/> {prod}% Prod</p>
+                <input type="range" min="0" max="100" value={prod} onChange={(e) => setProd(parseInt(e.target.value))} style={{ width: '100%' }} />
               </div>
             </div>
-            <div style={{ marginTop: '15px' }}>
-              {['fajr', 'dhuhr', 'asr', 'maghrib', 'isha'].map(p => (
-                <div key={p} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                  <span style={{ textTransform: 'capitalize', fontSize: '0.9rem' }}>{p}</span>
-                  <div style={{ display: 'flex', gap: '4px' }}>
-                    {[0, 1, 2, 3].map(n => (
-                      <button key={n} onClick={() => setSalah({...salah, [p]: n})} className="salah-btn"
-                        style={{ background: salah[p] === n ? (n === 0 ? '#64748b' : '#10b981') : 'rgba(255,255,255,0.05)' }}>
-                        {n===0?'M':n===1?'Q':n===2?'I':'J'}
-                      </button>
-                    ))}
-                  </div>
+            {['fajr', 'dhuhr', 'asr', 'maghrib', 'isha'].map(p => (
+              <div key={p} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', alignItems: 'center' }}>
+                <span style={{ textTransform: 'capitalize', fontSize: '0.8rem' }}>{p}</span>
+                <div style={{ display: 'flex', gap: '4px' }}>
+                  {[0, 1, 2, 3].map(n => (
+                    <button key={n} onClick={() => setSalah({ ...salah, [p]: n })}
+                      style={{ 
+                        padding: '4px 8px', fontSize: '0.65rem', borderRadius: '4px', border: 'none',
+                        background: salah[p] === n ? (n === 0 ? '#ef4444' : '#10b981') : 'rgba(255,255,255,0.1)',
+                        color: 'white', cursor: 'pointer'
+                      }}>{n === 0 ? 'M' : n === 1 ? 'Q' : n === 2 ? 'I' : 'J'}</button>
+                  ))}
                 </div>
-              ))}
-            </div>
-            <button className="submit-btn" style={{ marginTop: '10px' }} onClick={saveDailyData}><Save size={18} /> Save Progress</button>
+              </div>
+            ))}
+            <button className="submit-btn" disabled={isSubmitting} onClick={handleSave} style={{ width: '100%', marginTop: '10px', height: '40px' }}>
+              {isSubmitting ? <Loader2 className="animate-spin" /> : 'Sync Today'}
+            </button>
           </>
         )}
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', marginTop: '15px' }}>
-        <div className="glass-card" style={{ textAlign: 'center', padding: '10px' }}>
-          <p style={{ fontSize: '0.6rem', color: '#94a3b8' }}>SALAH</p>
-          <h3 style={{ color: '#10b981', margin: 0 }}>{stats.salah}%</h3>
-        </div>
-        <div className="glass-card" style={{ textAlign: 'center', padding: '10px' }}>
-          <p style={{ fontSize: '0.6rem', color: '#94a3b8' }}>SLEEP</p>
-          <h3 style={{ color: '#3b82f6', margin: 0 }}>{stats.sleep}%</h3>
-        </div>
-        <div className="glass-card" style={{ textAlign: 'center', padding: '10px' }}>
-          <p style={{ fontSize: '0.6rem', color: '#94a3b8' }}>PROD</p>
-          <h3 style={{ color: '#f59e0b', margin: 0 }}>{stats.prod}%</h3>
-        </div>
-      </div>
-
-      <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', margin: '15px 0' }}>
+      {/* 3. TIME FILTER */}
+      <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', marginBottom: '15px' }}>
         {['week', 'month', 'year'].map(m => (
-          <button key={m} onClick={() => setViewMode(m)} style={{ 
+          <button key={m} onClick={() => setViewMode(m)} style={{
             background: viewMode === m ? '#10b981' : 'transparent',
-            border: '1px solid #10b981', color: 'white', padding: '4px 12px', borderRadius: '6px', fontSize: '0.75rem'
+            border: '1px solid #10b981', color: 'white', padding: '4px 12px', borderRadius: '15px', fontSize: '0.7rem'
           }}>{m}</button>
         ))}
       </div>
 
-      <div className="charts-grid">
-        <div className="glass-card">
-          <h3 style={{ fontSize: '0.85rem' }}><PieIcon size={14} /> Salah Distribution</h3>
-          <Pie data={{
+      {/* 4. ANALYTICS GRAPHS */}
+      <div className="glass-card" style={{ padding: '15px', marginBottom: '15px' }}>
+        <h4 style={{ fontSize: '0.8rem', margin: '0 0 10px 0' }}><PieIcon size={14} /> Salah Distribution</h4>
+        <Pie data={{
             labels: ['Jamat', 'Indiv', 'Qaza', 'Missed'],
-            datasets: [{ data: salahStats, backgroundColor: ['#10b981', '#3b82f6', '#f59e0b', '#ef4444'], borderColor: 'transparent' }]
-          }} options={{ plugins: { legend: { position: 'bottom', labels: { color: 'white', font: { size: 9 } } } } }} />
-        </div>
+            datasets: [{ data: salahStats(), backgroundColor: ['#10b981', '#3b82f6', '#f59e0b', '#ef4444'], borderWidth: 0 }]
+          }} 
+          options={{ plugins: { legend: { position: 'bottom', labels: { color: 'white', font: { size: 10 } } } } }} 
+        />
+      </div>
 
-        <div className="glass-card">
-          <h3 style={{ fontSize: '0.85rem' }}><BarChart3 size={14} /> Sleep Trend</h3>
-          <Bar data={{
+      <div className="glass-card" style={{ padding: '15px', marginBottom: '15px' }}>
+        <h4 style={{ fontSize: '0.8rem', margin: '0 0 10px 0' }}><BarChart3 size={14} /> Sleep Trend (Hours)</h4>
+        <Bar data={{
             labels: chartLabels,
             datasets: [{ label: 'Hrs', data: filteredHistory.map(l => l.sleepHours), backgroundColor: '#3b82f6' }]
-          }} options={{ scales: { y: { ticks: { color: 'white', font: { size: 8 } } }, x: { ticks: { color: 'white', font: { size: 8 } } } } }} />
-        </div>
-
-        <div className="glass-card">
-          <h3 style={{ fontSize: '0.85rem' }}><Activity size={14} /> Productivity</h3>
-          <Line data={{
-            labels: chartLabels,
-            datasets: [{ label: '%', data: filteredHistory.map(l => l.productivityPercentage), borderColor: '#f59e0b', tension: 0.4 }]
-          }} options={{ scales: { y: { ticks: { color: 'white', font: { size: 8 } } }, x: { ticks: { color: 'white', font: { size: 8 } } } } }} />
-        </div>
+          }} 
+          options={{ scales: { y: { ticks: { color: 'white' } }, x: { ticks: { color: 'white' } } } }} 
+        />
       </div>
+
+      <div className="glass-card" style={{ padding: '15px' }}>
+        <h4 style={{ fontSize: '0.8rem', margin: '0 0 10px 0' }}><Activity size={14} /> Productivity Trend (%)</h4>
+        <Line data={{
+            labels: chartLabels,
+            datasets: [{ label: '%', data: filteredHistory.map(l => l.productivityPercentage), borderColor: '#f59e0b', tension: 0.3 }]
+          }} 
+          options={{ scales: { y: { ticks: { color: 'white' } }, x: { ticks: { color: 'white' } } } }} 
+        />
+      </div>
+
     </div>
   );
 };
