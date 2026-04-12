@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Moon, Activity, BarChart3, PieChart as PieIcon, Save, Clock } from 'lucide-react';
+import { Moon, Activity, BarChart3, PieChart as PieIcon, Save, Clock, CheckCircle } from 'lucide-react';
 import { Line, Pie, Bar } from 'react-chartjs-2';
 import { 
   Chart as ChartJS, 
@@ -67,7 +67,6 @@ const Dashboard = () => {
     return logDate.getFullYear() === now.getFullYear();
   });
 
-  // Reusable Date Formatter for X-Axis Labels
   const getChartLabels = () => {
     return filteredHistory.map(log => {
       const d = new Date(log.date);
@@ -108,6 +107,7 @@ const Dashboard = () => {
       
       setShowSuccess(true);
       fetchHistory();
+      // Success message disappears after 3 seconds
       setTimeout(() => setShowSuccess(false), 3000);
     } catch (err) {
       alert("❌ Save failed. Token might be expired.");
@@ -126,8 +126,30 @@ const Dashboard = () => {
   });
 
   return (
-    <div className="dashboard-container" style={{ padding: '20px', color: 'white', maxWidth: '1200px', margin: '0 auto' }}>
+    <div className="dashboard-container" style={{ padding: '20px', color: 'white', maxWidth: '1200px', margin: '0 auto', position: 'relative' }}>
       
+      {/* SUCCESS NOTIFICATION */}
+      {showSuccess && (
+        <div style={{
+          position: 'fixed',
+          top: '20px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          backgroundColor: '#10b981',
+          padding: '12px 24px',
+          borderRadius: '12px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '10px',
+          boxShadow: '0 10px 25px rgba(0,0,0,0.5)',
+          zIndex: 1000,
+          animation: 'fadeInOut 3s ease'
+        }}>
+          <CheckCircle size={20} />
+          <span style={{ fontWeight: 'bold' }}>Progress Saved Successfully!</span>
+        </div>
+      )}
+
       <div className="glass-card" style={{ marginBottom: '20px' }}>
         <h2 style={{ marginBottom: '20px' }}>Daily Check-in</h2>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '25px' }}>
@@ -153,7 +175,8 @@ const Dashboard = () => {
                     onClick={() => setSalah({...salah, [p]: n})} 
                     style={{
                       background: salah[p] === n ? (n === 0 ? '#64748b' : '#10b981') : 'rgba(255,255,255,0.05)', 
-                      border:'1px solid rgba(255,255,255,0.1)', color:'white', borderRadius:'8px', padding:'6px 14px', cursor: 'pointer'
+                      border:'1px solid rgba(255,255,255,0.1)', color:'white', borderRadius:'8px', padding:'6px 14px', cursor: 'pointer',
+                      transition: 'all 0.2s ease'
                     }}>
                     {n===0?'M':n===1?'Q':n===2?'I':'J'}
                   </button>
@@ -163,16 +186,16 @@ const Dashboard = () => {
           ))}
         </div>
         
-        <button className="submit-btn" onClick={saveDailyData} style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '10px', marginTop: '15px' }}>
+        <button className="submit-btn" onClick={saveDailyData} style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '10px', marginTop: '15px', width: '100%', padding: '12px' }}>
           <Save size={18} /> Save Progress
         </button>
       </div>
 
       <div className="glass-card" style={{ marginBottom: '20px', textAlign: 'center' }}>
         <h4 style={{ margin: '0 0 10px 0', color: '#94a3b8' }}>Select View</h4>
-        <div style={{ display: 'flex', justifyContent: 'center', gap: '15px', textTransform: 'capitalize', fontWeight: 'bold' }}>
+        <div style={{ display: 'flex', justifyContent: 'center', gap: '20px', textTransform: 'capitalize', fontWeight: 'bold', marginBottom: '8px' }}>
           {modes.map(mode => (
-            <span key={mode} style={{ color: viewMode === mode ? '#10b981' : 'rgba(255,255,255,0.6)' }}>{mode}</span>
+            <span key={mode} style={{ color: viewMode === mode ? '#10b981' : 'rgba(255,255,255,0.6)', transition: 'color 0.3s' }}>{mode}</span>
           ))}
         </div>
         <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0px', marginTop: '10px' }}>
@@ -194,7 +217,7 @@ const Dashboard = () => {
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
         <div className="glass-card" style={{ textAlign: 'center' }}>
-          <h3><PieIcon size={18} /> Salah Distribution ({viewMode})</h3>
+          <h3 style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}><PieIcon size={18} /> Salah Distribution ({viewMode})</h3>
           <Pie 
             data={{
               labels: ['Jamat', 'Individual', 'Qaza', 'Missed'],
@@ -204,16 +227,16 @@ const Dashboard = () => {
                 borderColor: 'transparent'
               }]
             }}
-            options={{ plugins: { legend: { position: 'bottom', labels: { color: 'white' } } } }}
+            options={{ plugins: { legend: { position: 'bottom', labels: { color: 'white', padding: 20 } } } }}
           />
         </div>
 
         <div className="glass-card">
-          <h3><Moon size={18} /> Sleep Hours</h3>
+          <h3 style={{ display: 'flex', alignItems: 'center', gap: '10px' }}><Moon size={18} /> Sleep Hours</h3>
           <Bar 
             key={`sleep-${viewMode}`}
             data={{
-              labels: getChartLabels(), // Integration point
+              labels: getChartLabels(),
               datasets: [{
                 label: 'Hours',
                 data: filteredHistory.map(log => log.sleepHours),
@@ -226,11 +249,11 @@ const Dashboard = () => {
         </div>
 
         <div className="glass-card">
-          <h3><Activity size={18} /> Productivity %</h3>
+          <h3 style={{ display: 'flex', alignItems: 'center', gap: '10px' }}><Activity size={18} /> Productivity %</h3>
           <Line
             key={`prod-${viewMode}`} 
             data={{
-              labels: getChartLabels(), // Integration point
+              labels: getChartLabels(),
               datasets: [{
                 label: 'Productivity',
                 data: filteredHistory.map(log => log.productivityPercentage),

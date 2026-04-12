@@ -110,3 +110,45 @@ body {
   font-size: 14px;
   margin-bottom: 10px;
 }
+
+/* --- Mobile Responsive Fixes --- */
+@media (max-width: 768px) {
+  /* Adjust the main container padding so content doesn't hit the edges */
+  .dashboard-container {
+    padding: 10px !important;
+  }
+
+  /* Make glass cards slightly less padded to save space */
+  .glass-card {
+    padding: 15px !important;
+    margin-bottom: 15px !important;
+    border-radius: 12px !important;
+  }
+
+  /* Stack navigation items vertically or hide labels if using a bottom bar */
+  nav {
+    padding: 10px 20px !important;
+    display: flex;
+    justify-content: space-around;
+  }
+
+  nav a span {
+    display: none; /* Hide text labels on mobile to save space, keep icons */
+  }
+
+  /* Adjust Grid layouts that were side-by-side */
+  .grid-2-col {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Force charts to be a reasonable height on mobile */
+  canvas {
+    max-height: 250px !important;
+  }
+
+  /* Daily check-in buttons (J/I/Q/M) - make them slightly larger for thumbs */
+  button {
+    padding: 10px 12px !important;
+    font-size: 14px;
+  }
+}
