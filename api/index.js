@@ -5,7 +5,6 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 require('dotenv').config();
 
-// Make sure your models are moved into the api/models folder!
 const User = require('./models/User');
 const DailyLog = require('./models/DailyLog');
 
@@ -13,8 +12,23 @@ const app = express();
 app.use(express.json());
 app.use(cors()); 
 
-// Connect to MongoDB
 mongoose.connect(process.env.MONGO_URI);
+
+// --- AUTH MIDDLEWARE ---
+const auth = (req, res, next) => {
+  // Check both standard Authorization and your custom x-auth-token
+  const token = req.header('x-auth-token') || req.header('Authorization')?.split(' ')[1];
+  
+  if (!token) return res.status(401).json({ msg: "No token, authorization denied" });
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    req.user = decoded.id; // Changed to .id to match your login jwt.sign
+    next();
+  } catch (err) {
+    res.status(401).json({ msg: "Token is not valid" });
+  }
+};
 
 // --- AUTH ROUTES ---
 app.post('/api/auth/register', async (req, res) => {
@@ -46,5 +60,35 @@ app.post('/api/auth/login', async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
-// IMPORTANT: Export the app for Vercel
+
+// --- LOGS ROUTES (Essential for Dashboard) ---
+
+// 1. Fetch all logs for charts
+app.get('/api/logs/all', auth, async (req, res) => {
+  try {
+    const logs = await DailyLog.find({ userId: req.user }).sort({ date: 1 });
+    res.json(logs);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 2. Save daily progress
+app.post('/api/logs/daily', auth, async (req, res) => {
+  try {
+    const { salah, sleepHours, productivityPercentage, date } = req.body;
+    
+    // Update existing log for the day or create new one
+    const log = await DailyLog.findOneAndUpdate(
+      { userId: req.user, date: date },
+      { salah, sleepHours, productivityPercentage },
+      { upsert: true, new: true }
+    );
+    
+    res.json(log);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = app;

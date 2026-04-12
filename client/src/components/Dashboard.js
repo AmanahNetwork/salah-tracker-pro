@@ -34,7 +34,7 @@ const Dashboard = () => {
     const token = localStorage.getItem('token');
     try {
       const res = await axios.get('/api/logs/all', {
-        headers: { 'x-auth-token': token }
+        headers: { 'Authorization': `Bearer ${token}` }
       });
       setHistory(res.data);
     } catch (err) {
@@ -85,7 +85,7 @@ const Dashboard = () => {
         productivityPercentage: manualProductivity,
         date: new Date().toISOString().split('T')[0]
       }, {
-        headers: { 'x-auth-token': token }
+        headers: { 'Authorization': `Bearer ${token}` }
       });
       
       // TRIGGER SUCCESS FEEDBACK
