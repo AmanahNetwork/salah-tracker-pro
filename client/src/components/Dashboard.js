@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Moon, Activity, BarChart3, PieChart as PieIcon, Save, Calendar } from 'lucide-react';
+import { Moon, Activity, BarChart3, PieChart as PieIcon, Save, Calendar, Clock } from 'lucide-react';
 import { Line, Pie, Bar } from 'react-chartjs-2';
 import { 
   Chart as ChartJS, 
@@ -26,8 +26,6 @@ const Dashboard = () => {
   const [manualProductivity, setManualProductivity] = useState(50);
   const [salah, setSalah] = useState({ fajr: 0, dhuhr: 0, asr: 0, maghrib: 0, isha: 0 });
   const [viewMode, setViewMode] = useState('month');
-  
-  // NEW: Success state for visual feedback
   const [showSuccess, setShowSuccess] = useState(false);
 
   const fetchHistory = async () => {
@@ -51,9 +49,15 @@ const Dashboard = () => {
     fetchHistory();
   }, []);
 
+  // Updated Filter Logic: Added 'week'
   const filteredHistory = history.filter(log => {
     const logDate = new Date(log.date);
     const now = new Date();
+    if (viewMode === 'week') {
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(now.getDate() - 7);
+      return logDate >= sevenDaysAgo;
+    }
     if (viewMode === 'month') {
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(now.getDate() - 30);
@@ -62,19 +66,24 @@ const Dashboard = () => {
     return logDate.getFullYear() === now.getFullYear();
   });
 
+  // Updated Stats Logic: Added 'Missed'
   const getSalahStats = () => {
-    let counts = { Jamat: 0, Individual: 0, Qaza: 0 };
+    let counts = { Jamat: 0, Individual: 0, Qaza: 0, Missed: 0 };
     filteredHistory.forEach(log => {
       if (log.salah) {
         Object.values(log.salah).forEach(val => {
           if (val === 3) counts.Jamat++;
           else if (val === 2) counts.Individual++;
           else if (val === 1) counts.Qaza++;
+          else if (val === 0) counts.Missed++;
         });
       }
     });
-    return [counts.Jamat, counts.Individual, counts.Qaza];
+    return [counts.Jamat, counts.Individual, counts.Qaza, counts.Missed];
   };
+
+  // Calculate Total Sleep for the selected view
+  const totalSleepInView = filteredHistory.reduce((acc, log) => acc + (log.sleepHours || 0), 0);
 
   const saveDailyData = async () => {
     const token = localStorage.getItem('token');
@@ -88,20 +97,16 @@ const Dashboard = () => {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       
-      // TRIGGER SUCCESS FEEDBACK
       setShowSuccess(true);
       fetchHistory();
-      
-      // Auto-hide success message after 3 seconds
       setTimeout(() => setShowSuccess(false), 3000);
-      
     } catch (err) {
-      alert("❌ Save failed. Token might be expired.");
+      alert("❌ Save failed. Check your connection or login again.");
     }
   };
 
   return (
-    <div className="dashboard-container">
+    <div className="dashboard-container" style={{ padding: '20px', color: 'white' }}>
       
       {/* --- INPUT SECTION --- */}
       <div className="glass-card">
@@ -110,7 +115,8 @@ const Dashboard = () => {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '25px' }}>
           <div>
             <p style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><Moon size={18} color="#3b82f6" /> Sleep: **{sleep}h**</p>
-            <input type="range" min="0" max="12" step="0.5" value={sleep} onChange={(e) => setSleep(parseFloat(e.target.value))} style={{width:'100%'}}/>
+            {/* Range updated to 24 hours */}
+            <input type="range" min="0" max="24" step="0.5" value={sleep} onChange={(e) => setSleep(parseFloat(e.target.value))} style={{width:'100%'}}/>
           </div>
           <div>
             <p style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><BarChart3 size={18} color="#f59e0b" /> Productivity: **{manualProductivity}%**</p>
@@ -119,24 +125,26 @@ const Dashboard = () => {
         </div>
         
         <div style={{ marginTop: '25px' }}>
-          <h4 style={{ marginBottom: '15px', color: '#94a3b8' }}>Salah Log (Q:1, I:2, J:3)</h4>
+          <h4 style={{ marginBottom: '15px', color: '#94a3b8' }}>Salah Log (M:0, Q:1, I:2, J:3)</h4>
           {['fajr', 'dhuhr', 'asr', 'maghrib', 'isha'].map((p) => (
             <div key={p} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', alignItems: 'center' }}>
               <span style={{textTransform:'capitalize', fontWeight: '500'}}>{p}</span>
               <div style={{display:'flex', gap:'8px'}}>
-                {[1, 2, 3].map(n => (
+                {/* Updated to include '0' for Missed */}
+                {[0, 1, 2, 3].map(n => (
                   <button 
                     key={n} 
                     onClick={() => setSalah({...salah, [p]: n})} 
                     style={{
-                      background: salah[p] === n ? '#10b981' : 'rgba(255,255,255,0.05)', 
+                      background: salah[p] === n ? (n === 0 ? '#64748b' : '#10b981') : 'rgba(255,255,255,0.05)', 
                       border:'1px solid rgba(255,255,255,0.1)', 
                       color:'white', 
                       borderRadius:'8px', 
                       padding:'6px 14px',
-                      cursor: 'pointer'
+                      cursor: 'pointer',
+                      transition: '0.2s'
                     }}>
-                    {n===1?'Q':n===2?'I':'J'}
+                    {n===0?'M':n===1?'Q':n===2?'I':'J'}
                   </button>
                 ))}
               </div>
@@ -144,93 +152,79 @@ const Dashboard = () => {
           ))}
         </div>
         
-        {/* SUCCESS MESSAGE UI */}
         <div style={{ minHeight: '30px', marginTop: '15px' }}>
-          {showSuccess && (
-            <p style={{ color: '#10b981', textAlign: 'center', marginBottom: '10px', fontWeight: 'bold' }}>
-              ✨ Progress synced to your account!
-            </p>
-          )}
+          {showSuccess && <p style={{ color: '#10b981', textAlign: 'center', fontWeight: 'bold' }}>✨ Progress synced!</p>}
         </div>
 
-        <button className="submit-btn" onClick={saveDailyData} style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '10px' }}>
+        <button className="submit-btn" onClick={saveDailyData} style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '10px', width: '100%', padding: '12px', borderRadius: '10px', background: '#3b82f6', color: 'white', border: 'none', cursor: 'pointer' }}>
           <Save size={18} /> Save Progress
         </button>
       </div>
 
-      {/* --- CHART CONTROLS --- */}
-      <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', width: '100%', maxWidth: '1200px' }}>
-        <button 
-          onClick={() => setViewMode('month')}
-          style={{ 
-            flex: 1,
-            display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px',
-            background: viewMode === 'month' ? '#10b981' : 'rgba(255,255,255,0.05)', 
-            border: '1px solid rgba(255,255,255,0.1)', 
-            color: 'white', padding: '12px', borderRadius: '10px', cursor: 'pointer', transition: '0.3s' 
-          }}
-        >
-          <Calendar size={16} /> Monthly View
-        </button>
-        <button 
-          onClick={() => setViewMode('year')}
-          style={{ 
-            flex: 1,
-            display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px',
-            background: viewMode === 'year' ? '#10b981' : 'rgba(255,255,255,0.05)', 
-            border: '1px solid rgba(255,255,255,0.1)', 
-            color: 'white', padding: '12px', borderRadius: '10px', cursor: 'pointer', transition: '0.3s' 
-          }}
-        >
-          <Activity size={16} /> Yearly View
-        </button>
+      {/* --- VIEW TOGGLES --- */}
+      <div style={{ display: 'flex', gap: '10px', margin: '20px 0', width: '100%', maxWidth: '1200px' }}>
+        {['week', 'month', 'year'].map((mode) => (
+          <button 
+            key={mode}
+            onClick={() => setViewMode(mode)}
+            style={{ 
+              flex: 1, padding: '10px', borderRadius: '10px', cursor: 'pointer',
+              background: viewMode === mode ? '#10b981' : 'rgba(255,255,255,0.05)', 
+              color: 'white', border: '1px solid rgba(255,255,255,0.1)', textTransform: 'capitalize'
+            }}
+          >
+            {mode} View
+          </button>
+        ))}
       </div>
 
-      {/* --- VISUALIZATION SECTION --- */}
+      {/* --- STATS SUMMARY --- */}
+      <div className="glass-card" style={{ marginBottom: '20px', textAlign: 'center', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '15px' }}>
+        <Clock size={24} color="#3b82f6" />
+        <div>
+          <p style={{ color: '#94a3b8', margin: 0 }}>Total Sleep Logged ({viewMode})</p>
+          <h2 style={{ margin: 0 }}>{totalSleepInView.toFixed(1)} Hours</h2>
+        </div>
+      </div>
+
+      {/* --- CHARTS --- */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '20px', width: '100%', maxWidth: '1200px' }}>
         
         <div className="glass-card">
           <h3><PieIcon size={18} /> Salah Distribution</h3>
           <Pie 
             data={{
-              labels: ['Jamat', 'Individual', 'Qaza'],
+              labels: ['Jamat', 'Individual', 'Qaza', 'Missed'],
               datasets: [{
                 data: getSalahStats(),
-                backgroundColor: ['#10b981', '#3b82f6', '#f59e0b'],
+                backgroundColor: ['#10b981', '#3b82f6', '#f59e0b', '#64748b'], // Grey for Missed
                 borderColor: 'transparent'
               }]
             }}
-            options={{ plugins: { legend: { position: 'bottom', labels: { color: 'white', padding: 20 } } } }}
+            options={{ plugins: { legend: { position: 'bottom', labels: { color: 'white' } } } }}
           />
         </div>
 
         <div className="glass-card">
-          <h3><Activity size={18} /> {viewMode === 'month' ? 'Monthly' : 'Yearly'} Productivity</h3>
+          <h3><Activity size={18} /> Productivity %</h3>
           <Line 
             data={{
               labels: filteredHistory.map(log => log.date),
               datasets: [{
-                label: 'Productivity %',
+                label: 'Productivity',
                 data: filteredHistory.map(log => log.productivityPercentage),
                 borderColor: '#f59e0b',
                 tension: 0.4,
-                pointRadius: 4,
+                fill: true,
                 backgroundColor: 'rgba(245, 158, 11, 0.1)',
-                fill: true
               }]
             }}
-            options={{ 
-              scales: { 
-                y: { min: 0, max: 100, ticks: { color: 'white' }, grid: { color: 'rgba(255,255,255,0.05)' } }, 
-                x: { ticks: { color: 'white' }, grid: { display: false } } 
-              },
-              plugins: { legend: { display: false } }
-            }}
+            options={{ scales: { y: { min: 0, max: 100, ticks: { color: 'white' } }, x: { ticks: { color: 'white' } } } }}
           />
         </div>
 
         <div className="glass-card">
-          <h3><Moon size={18} /> {viewMode === 'month' ? 'Monthly' : 'Yearly'} Sleep</h3>
+          <h3><Moon size={18} /> Sleep Hours</h3>
           <Bar 
             data={{
               labels: filteredHistory.map(log => log.date),
@@ -238,19 +232,12 @@ const Dashboard = () => {
                 label: 'Hours',
                 data: filteredHistory.map(log => log.sleepHours),
                 backgroundColor: '#3b82f6',
-                borderRadius: 6
+                borderRadius: 5
               }]
             }}
-            options={{ 
-              scales: { 
-                y: { min: 0, max: 12, ticks: { color: 'white' }, grid: { color: 'rgba(255,255,255,0.05)' } }, 
-                x: { ticks: { color: 'white' }, grid: { display: false } } 
-              },
-              plugins: { legend: { display: false } }
-            }}
+            options={{ scales: { y: { min: 0, max: 24, ticks: { color: 'white' } }, x: { ticks: { color: 'white' } } } }}
           />
         </div>
-
       </div>
     </div>
   );

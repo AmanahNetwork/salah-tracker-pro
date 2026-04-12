@@ -15,7 +15,7 @@ const DailyLogSchema = new mongoose.Schema({
     maghrib: { type: Number, default: 0 },
     isha: { type: Number, default: 0 }
   },
-  sleepHours: { type: Number, default: 0 },
+  sleepHours: { type: Number, min: 0, max: 24 },
   productivityPercentage: { type: Number, default: 0 }
 }, { timestamps: true });
 
