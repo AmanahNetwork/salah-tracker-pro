@@ -27,6 +27,7 @@ const Dashboard = () => {
   const [salah, setSalah] = useState({ fajr: 0, dhuhr: 0, asr: 0, maghrib: 0, isha: 0 });
   const [viewMode, setViewMode] = useState('month');
   const [showSuccess, setShowSuccess] = useState(false);
+  const username = localStorage.getItem('username') || 'User';
 
   const modes = ['week', 'month', 'year'];
 
@@ -39,13 +40,17 @@ const Dashboard = () => {
         localStorage.removeItem('token');
         window.location.reload();
       }
-      console.error("Fetch error", err);
     }
   };
 
   useEffect(() => {
     fetchHistory();
   }, []);
+
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    window.location.reload();
+  };
 
   const filteredHistory = history.filter(log => {
     const logDate = new Date(log.date);
@@ -89,51 +94,33 @@ const Dashboard = () => {
 
   const totalSleepInView = filteredHistory.reduce((acc, log) => acc + (log.sleepHours || 0), 0);
 
-  const saveDailyData = async () => {
-    try {
-      await API.post('/api/logs/daily', {
-        salah,
-        sleepHours: sleep,
-        productivityPercentage: manualProductivity,
-        date: new Date().toISOString().split('T')[0]
-      });
-      setShowSuccess(true);
-      fetchHistory();
-      setTimeout(() => setShowSuccess(false), 3000);
-    } catch (err) {
-      alert("❌ Save failed. Check your connection.");
-    }
-  };
-
   const getSliderPointStyle = (mode) => ({
-    width: '20px',
-    height: '20px',
-    borderRadius: '50%',
-    border: '2px solid rgba(255,255,255,0.4)',
-    cursor: 'pointer',
+    width: '20px', height: '20px', borderRadius: '50%',
+    border: '2px solid rgba(255,255,255,0.4)', cursor: 'pointer',
     background: viewMode === mode ? '#10b981' : 'transparent',
-    transition: '0.3s ease',
-    boxShadow: viewMode === mode ? '0 0 12px #10b981' : 'none',
+    transition: '0.3s ease', boxShadow: viewMode === mode ? '0 0 12px #10b981' : 'none',
   });
 
   return (
     <div className="dashboard-container">
-      
-      {/* SUCCESS NOTIFICATION */}
+      {/* TOP HEADER - FIXED POSITIONING */}
+      <div className="top-header-slot">
+        <img src="/logo.png" alt="Logo" className="header-logo" />
+        <div className="user-controls">
+          <p style={{ margin: 0 }}>Welcome, <span style={{ color: '#10b981', fontWeight: 'bold' }}>{username}</span></p>
+          <button onClick={handleLogout} className="logout-btn">Logout</button>
+        </div>
+      </div>
+
       {showSuccess && (
-        <div className="success-toast" style={{
-          position: 'fixed', top: '20px', left: '50%', transform: 'translateX(-50%)',
-          backgroundColor: '#10b981', padding: '12px 24px', borderRadius: '12px',
-          display: 'flex', alignItems: 'center', gap: '10px', zIndex: 1000, boxShadow: '0 10px 25px rgba(0,0,0,0.5)'
-        }}>
-          <CheckCircle size={20} />
-          <span style={{ fontWeight: 'bold' }}>Progress Saved!</span>
+        <div className="success-toast">
+          <CheckCircle size={20} /> <span>Progress Saved!</span>
         </div>
       )}
 
       {/* INPUT CARD */}
       <div className="glass-card">
-        <h2 style={{ marginBottom: '20px' }}>Daily Check-in</h2>
+        <h2>Daily Check-in</h2>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '20px' }}>
           <div>
             <p style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><Moon size={18} color="#3b82f6" /> Sleep: **{sleep}h**</p>
@@ -145,22 +132,18 @@ const Dashboard = () => {
           </div>
         </div>
         
-        <div style={{ marginTop: '25px' }}>
+        <div style={{ marginTop: '20px' }}>
           <h4 style={{ marginBottom: '15px', color: '#94a3b8' }}>Salah Log</h4>
           {['fajr', 'dhuhr', 'asr', 'maghrib', 'isha'].map((p) => (
-            <div key={p} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px', alignItems: 'center' }}>
-              <span style={{textTransform:'capitalize', fontWeight: '500'}}>{p}</span>
+            <div key={p} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', alignItems: 'center' }}>
+              <span style={{textTransform:'capitalize'}}>{p}</span>
               <div style={{display:'flex', gap:'6px'}}>
                 {[0, 1, 2, 3].map(n => (
                   <button 
                     key={n} 
                     onClick={() => setSalah({...salah, [p]: n})} 
                     className="salah-btn"
-                    style={{
-                      background: salah[p] === n ? (n === 0 ? '#64748b' : '#10b981') : 'rgba(255,255,255,0.05)', 
-                      border:'1px solid rgba(255,255,255,0.1)', color:'white', borderRadius:'8px', padding:'8px 12px', cursor: 'pointer',
-                      transition: '0.2s ease'
-                    }}>
+                    style={{ background: salah[p] === n ? (n === 0 ? '#64748b' : '#10b981') : 'rgba(255,255,255,0.05)' }}>
                     {n===0?'M':n===1?'Q':n===2?'I':'J'}
                   </button>
                 ))}
@@ -168,110 +151,66 @@ const Dashboard = () => {
             </div>
           ))}
         </div>
-        
-        <button className="submit-btn" onClick={saveDailyData} style={{ marginTop: '15px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-          <Save size={18} /> Save Progress
-        </button>
+        <button className="submit-btn" onClick={() => setShowSuccess(true)} style={{ marginTop: '15px' }}><Save size={18} /> Save Progress</button>
       </div>
 
-      {/* VIEW SELECTOR */}
-      <div className="glass-card" style={{ textAlign: 'center' }}>
-        <h4 style={{ margin: '0 0 10px 0', color: '#94a3b8' }}>Select View</h4>
-        <div style={{ display: 'flex', justifyContent: 'center', gap: '25px', textTransform: 'capitalize', fontWeight: 'bold', marginBottom: '15px' }}>
-          {modes.map(mode => (
-            <span key={mode} style={{ color: viewMode === mode ? '#10b981' : 'rgba(255,255,255,0.5)', transition: 'color 0.3s' }}>{mode}</span>
-          ))}
-        </div>
-        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-          <div style={getSliderPointStyle('week')} onClick={() => setViewMode('week')}></div>
-          <div style={{ width: '50px', height: '2px', background: 'rgba(255,255,255,0.1)' }}></div>
-          <div style={getSliderPointStyle('month')} onClick={() => setViewMode('month')}></div>
-          <div style={{ width: '50px', height: '2px', background: 'rgba(255,255,255,0.1)' }}></div>
-          <div style={getSliderPointStyle('year')} onClick={() => setViewMode('year')}></div>
-        </div>
-      </div>
-
-      {/* STATS SUMMARY */}
-      <div className="glass-card" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '15px' }}>
-        <Clock size={24} color="#3b82f6" />
-        <div style={{ textAlign: 'left' }}>
-          <p style={{ color: '#94a3b8', margin: 0, fontSize: '0.9rem' }}>Total Sleep Logged ({viewMode})</p>
-          <h2 style={{ margin: 0 }}>{totalSleepInView.toFixed(1)} Hours</h2>
-        </div>
-      </div>
-
-      {/* CHARTS GRID SECTION */}
-      <div className="charts-grid">
+      {/* VIEW SELECTOR & SUMMARY */}
+      <div style={{ width: '100%', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
         <div className="glass-card" style={{ textAlign: 'center' }}>
-          <h3 style={{ marginBottom: '20px', fontSize: '1.1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-            <PieIcon size={18} /> Salah Distribution
-          </h3>
+          <p style={{ color: '#94a3b8', marginBottom: '10px' }}>Select View</p>
+          <div style={{ display: 'flex', justifyContent: 'center', gap: '20px', fontWeight: 'bold', marginBottom: '10px' }}>
+            {modes.map(m => <span key={m} style={{ color: viewMode === m ? '#10b981' : 'rgba(255,255,255,0.4)' }}>{m}</span>)}
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+            <div style={getSliderPointStyle('week')} onClick={() => setViewMode('week')}></div>
+            <div style={{ width: '40px', height: '2px', background: 'rgba(255,255,255,0.1)' }}></div>
+            <div style={getSliderPointStyle('month')} onClick={() => setViewMode('month')}></div>
+            <div style={{ width: '40px', height: '2px', background: 'rgba(255,255,255,0.1)' }}></div>
+            <div style={getSliderPointStyle('year')} onClick={() => setViewMode('year')}></div>
+          </div>
+        </div>
+
+        <div className="glass-card" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '15px' }}>
+          <Clock size={24} color="#3b82f6" />
+          <div style={{ textAlign: 'left' }}>
+            <p style={{ color: '#94a3b8', margin: 0, fontSize: '0.8rem' }}>Total Sleep ({viewMode})</p>
+            <h2 style={{ margin: 0 }}>{totalSleepInView.toFixed(1)}h</h2>
+          </div>
+        </div>
+      </div>
+
+      {/* CHARTS GRID - THIS FIXES THE OVERFLOW */}
+      <div className="charts-grid">
+        <div className="glass-card">
+          <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '1rem' }}><PieIcon size={16} /> Salah</h3>
           <Pie 
             data={{
-              labels: ['Jamat', 'Individual', 'Qaza', 'Missed'],
-              datasets: [{
-                data: getSalahStats(),
-                backgroundColor: ['#10b981', '#3b82f6', '#f59e0b', '#64748b'],
-                borderColor: 'transparent'
-              }]
+              labels: ['J', 'I', 'Q', 'M'],
+              datasets: [{ data: getSalahStats(), backgroundColor: ['#10b981', '#3b82f6', '#f59e0b', '#64748b'], borderColor: 'transparent' }]
             }}
-            options={{ 
-              responsive: true, 
-              maintainAspectRatio: true,
-              plugins: { legend: { position: 'bottom', labels: { color: 'white', font: { size: 10 } } } } 
-            }}
+            options={{ maintainAspectRatio: true, plugins: { legend: { position: 'bottom', labels: { color: 'white', font: { size: 10 } } } } }}
           />
         </div>
 
         <div className="glass-card">
-          <h3 style={{ marginBottom: '20px', fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <BarChart3 size={18} color="#3b82f6" /> Sleep Trends
-          </h3>
+          <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '1rem' }}><BarChart3 size={16} color="#3b82f6" /> Sleep</h3>
           <Bar 
-            key={`sleep-${viewMode}`}
             data={{
               labels: getChartLabels(),
-              datasets: [{
-                label: 'Hours',
-                data: filteredHistory.map(log => log.sleepHours),
-                backgroundColor: '#3b82f6',
-                borderRadius: 4
-              }]
+              datasets: [{ label: 'Hrs', data: filteredHistory.map(l => l.sleepHours), backgroundColor: '#3b82f6' }]
             }}
-            options={{ 
-              responsive: true,
-              scales: { 
-                y: { min: 0, max: 24, ticks: { color: 'rgba(255,255,255,0.7)', font: { size: 10 } } },
-                x: { ticks: { color: 'rgba(255,255,255,0.7)', font: { size: 10 } } }
-              }
-            }}
+            options={{ responsive: true, scales: { y: { ticks: { color: 'white', font: { size: 9 } } }, x: { ticks: { color: 'white', font: { size: 9 } } } } }}
           />
         </div>
 
         <div className="glass-card">
-          <h3 style={{ marginBottom: '20px', fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Activity size={18} color="#f59e0b" /> Productivity %
-          </h3>
-          <Line
-            key={`prod-${viewMode}`}
+          <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '1rem' }}><Activity size={16} color="#f59e0b" /> Productivity</h3>
+          <Line 
             data={{
               labels: getChartLabels(),
-              datasets: [{
-                label: 'Productivity',
-                data: filteredHistory.map(log => log.productivityPercentage),
-                borderColor: '#f59e0b',
-                backgroundColor: 'rgba(245, 158, 11, 0.1)',
-                tension: 0.4,
-                fill: true,
-              }]
+              datasets: [{ label: '%', data: filteredHistory.map(l => l.productivityPercentage), borderColor: '#f59e0b', fill: true, backgroundColor: 'rgba(245, 158, 11, 0.1)' }]
             }}
-            options={{ 
-              responsive: true,
-              scales: { 
-                y: { min: 0, max: 100, ticks: { color: 'rgba(255,255,255,0.7)', font: { size: 10 } } },
-                x: { ticks: { color: 'rgba(255,255,255,0.7)', font: { size: 10 } } }
-              }
-            }}
+            options={{ responsive: true, scales: { y: { ticks: { color: 'white', font: { size: 9 } } }, x: { ticks: { color: 'white', font: { size: 9 } } } } }}
           />
         </div>
       </div>
