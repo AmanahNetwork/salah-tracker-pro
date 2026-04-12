@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Moon, Activity, BarChart3, PieChart as PieIcon, Save, Clock } from 'lucide-react';
+import { Moon, Activity, BarChart3, PieChart as PieIcon, Save, Clock, ChevronRight } from 'lucide-react';
 import { Line, Pie, Bar } from 'react-chartjs-2';
 import { 
   Chart as ChartJS, 
@@ -25,8 +25,11 @@ const Dashboard = () => {
   const [sleep, setSleep] = useState(7);
   const [manualProductivity, setManualProductivity] = useState(50);
   const [salah, setSalah] = useState({ fajr: 0, dhuhr: 0, asr: 0, maghrib: 0, isha: 0 });
-  const [viewMode, setViewMode] = useState('month');
+  const [viewMode, setViewMode] = useState('month'); // Changed default to 'month' as in your image
   const [showSuccess, setShowSuccess] = useState(false);
+
+  // View modes for the slider
+  const modes = ['week', 'month', 'year'];
 
   const fetchHistory = async () => {
     const token = localStorage.getItem('token');
@@ -49,7 +52,6 @@ const Dashboard = () => {
     fetchHistory();
   }, []);
 
-  // Updated Filter Logic: Added 'week'
   const filteredHistory = history.filter(log => {
     const logDate = new Date(log.date);
     const now = new Date();
@@ -66,7 +68,6 @@ const Dashboard = () => {
     return logDate.getFullYear() === now.getFullYear();
   });
 
-  // Updated Stats Logic: Added 'Missed'
   const getSalahStats = () => {
     let counts = { Jamat: 0, Individual: 0, Qaza: 0, Missed: 0 };
     filteredHistory.forEach(log => {
@@ -82,7 +83,6 @@ const Dashboard = () => {
     return [counts.Jamat, counts.Individual, counts.Qaza, counts.Missed];
   };
 
-  // Calculate Total Sleep for the selected view
   const totalSleepInView = filteredHistory.reduce((acc, log) => acc + (log.sleepHours || 0), 0);
 
   const saveDailyData = async () => {
@@ -101,22 +101,33 @@ const Dashboard = () => {
       fetchHistory();
       setTimeout(() => setShowSuccess(false), 3000);
     } catch (err) {
-      alert("❌ Save failed. Check your connection or login again.");
+      alert("❌ Save failed. Token might be expired.");
     }
   };
 
+  // Inline styling for the "3-point slider"
+  const getSliderPointStyle = (mode) => ({
+    width: '18px',
+    height: '18px',
+    borderRadius: '50%',
+    border: '2px solid rgba(255,255,255,0.4)',
+    cursor: 'pointer',
+    background: viewMode === mode ? '#10b981' : 'transparent', // Highlight selected mode
+    transition: '0.3s ease',
+    boxShadow: viewMode === mode ? '0 0 10px #10b981' : 'none',
+  });
+
   return (
-    <div className="dashboard-container" style={{ padding: '20px', color: 'white' }}>
+    <div className="dashboard-container" style={{ padding: '20px', color: 'white', maxWidth: '1200px', margin: '0 auto' }}>
       
-      {/* --- INPUT SECTION --- */}
-      <div className="glass-card">
+      {/* --- INPUT SECTION (Remains on top) --- */}
+      <div className="glass-card" style={{ marginBottom: '20px' }}>
         <h2 style={{ marginBottom: '20px' }}>Daily Check-in</h2>
         
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '25px' }}>
           <div>
             <p style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><Moon size={18} color="#3b82f6" /> Sleep: **{sleep}h**</p>
-            {/* Range updated to 24 hours */}
-            <input type="range" min="0" max="24" step="0.5" value={sleep} onChange={(e) => setSleep(parseFloat(e.target.value))} style={{width:'100%'}}/>
+            <input type="range" min="0" max="12" step="0.5" value={sleep} onChange={(e) => setSleep(parseFloat(e.target.value))} style={{width:'100%'}}/>
           </div>
           <div>
             <p style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><BarChart3 size={18} color="#f59e0b" /> Productivity: **{manualProductivity}%**</p>
@@ -125,24 +136,18 @@ const Dashboard = () => {
         </div>
         
         <div style={{ marginTop: '25px' }}>
-          <h4 style={{ marginBottom: '15px', color: '#94a3b8' }}>Salah Log (M:0, Q:1, I:2, J:3)</h4>
+          <h4 style={{ marginBottom: '15px', color: '#94a3b8' }}>Salah Log</h4>
           {['fajr', 'dhuhr', 'asr', 'maghrib', 'isha'].map((p) => (
             <div key={p} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', alignItems: 'center' }}>
               <span style={{textTransform:'capitalize', fontWeight: '500'}}>{p}</span>
               <div style={{display:'flex', gap:'8px'}}>
-                {/* Updated to include '0' for Missed */}
                 {[0, 1, 2, 3].map(n => (
                   <button 
                     key={n} 
                     onClick={() => setSalah({...salah, [p]: n})} 
                     style={{
                       background: salah[p] === n ? (n === 0 ? '#64748b' : '#10b981') : 'rgba(255,255,255,0.05)', 
-                      border:'1px solid rgba(255,255,255,0.1)', 
-                      color:'white', 
-                      borderRadius:'8px', 
-                      padding:'6px 14px',
-                      cursor: 'pointer',
-                      transition: '0.2s'
+                      border:'1px solid rgba(255,255,255,0.1)', color:'white', borderRadius:'8px', padding:'6px 14px', cursor: 'pointer'
                     }}>
                     {n===0?'M':n===1?'Q':n===2?'I':'J'}
                   </button>
@@ -152,33 +157,35 @@ const Dashboard = () => {
           ))}
         </div>
         
-        <div style={{ minHeight: '30px', marginTop: '15px' }}>
-          {showSuccess && <p style={{ color: '#10b981', textAlign: 'center', fontWeight: 'bold' }}>✨ Progress synced!</p>}
-        </div>
-
-        <button className="submit-btn" onClick={saveDailyData} style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '10px', width: '100%', padding: '12px', borderRadius: '10px', background: '#3b82f6', color: 'white', border: 'none', cursor: 'pointer' }}>
+        <button className="submit-btn" onClick={saveDailyData} style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '10px', marginTop: '15px' }}>
           <Save size={18} /> Save Progress
         </button>
       </div>
 
-      {/* --- VIEW TOGGLES --- */}
-      <div style={{ display: 'flex', gap: '10px', margin: '20px 0', width: '100%', maxWidth: '1200px' }}>
-        {['week', 'month', 'year'].map((mode) => (
-          <button 
-            key={mode}
-            onClick={() => setViewMode(mode)}
-            style={{ 
-              flex: 1, padding: '10px', borderRadius: '10px', cursor: 'pointer',
-              background: viewMode === mode ? '#10b981' : 'rgba(255,255,255,0.05)', 
-              color: 'white', border: '1px solid rgba(255,255,255,0.1)', textTransform: 'capitalize'
-            }}
-          >
-            {mode} View
-          </button>
-        ))}
+      {/* --- NEW 3-POINT SLIDER UI --- */}
+      <div className="glass-card" style={{ marginBottom: '20px', textAlign: 'center' }}>
+        <h4 style={{ margin: '0 0 10px 0', color: '#94a3b8' }}>Select View</h4>
+        <div style={{ display: 'flex', justifyContent: 'center', gap: '15px', textTransform: 'capitalize', fontWeight: 'bold' }}>
+          {modes.map(mode => (
+            <span key={mode} style={{ color: viewMode === mode ? '#10b981' : 'rgba(255,255,255,0.6)' }}>{mode}</span>
+          ))}
+        </div>
+        
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0px', marginTop: '10px' }}>
+          {/* Week Point */}
+          <div style={getSliderPointStyle('week')} onClick={() => setViewMode('week')} title="Weekly View"></div>
+          {/* Connectors */}
+          <div style={{ width: '60px', height: '2px', background: 'rgba(255,255,255,0.1)' }}></div>
+          {/* Month Point */}
+          <div style={getSliderPointStyle('month')} onClick={() => setViewMode('month')} title="Monthly View"></div>
+          {/* Connectors */}
+          <div style={{ width: '60px', height: '2px', background: 'rgba(255,255,255,0.1)' }}></div>
+          {/* Year Point */}
+          <div style={getSliderPointStyle('year')} onClick={() => setViewMode('year')} title="Yearly View"></div>
+        </div>
       </div>
 
-      {/* --- STATS SUMMARY --- */}
+      {/* --- STATS SUMMARY (Sleep Card) --- */}
       <div className="glass-card" style={{ marginBottom: '20px', textAlign: 'center', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '15px' }}>
         <Clock size={24} color="#3b82f6" />
         <div>
@@ -187,11 +194,12 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* --- CHARTS --- */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '20px', width: '100%', maxWidth: '1200px' }}>
+      {/* --- NEW VERTICAL STACK LAYOUT --- */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
         
-        <div className="glass-card">
-          <h3><PieIcon size={18} /> Salah Distribution</h3>
+        {/* 1. PIE CHART */}
+        <div className="glass-card" style={{ textAlign: 'center' }}>
+          <h3><PieIcon size={18} /> Salah Distribution ({viewMode})</h3>
           <Pie 
             data={{
               labels: ['Jamat', 'Individual', 'Qaza', 'Missed'],
@@ -205,9 +213,29 @@ const Dashboard = () => {
           />
         </div>
 
+        {/* 2. SLEEP HOURS (Bar) */}
+        <div className="glass-card">
+          <h3><Moon size={18} /> Sleep Hours</h3>
+          <Bar 
+          key={`sleep-${viewMode}`}
+            data={{
+              labels: filteredHistory.map(log => log.date),
+              datasets: [{
+                label: 'Hours',
+                data: filteredHistory.map(log => log.sleepHours),
+                backgroundColor: '#3b82f6',
+                borderRadius: 5
+              }]
+            }}
+            options={{ scales: { y: { min: 0, max: 12, ticks: { color: 'white' } }, x: { ticks: { color: 'white' } } } }}
+          />
+        </div>
+
+        {/* 3. PRODUCTIVITY % (Line) */}
         <div className="glass-card">
           <h3><Activity size={18} /> Productivity %</h3>
-          <Line 
+          <Line
+            key={`prod-${viewMode}`} 
             data={{
               labels: filteredHistory.map(log => log.date),
               datasets: [{
@@ -223,21 +251,6 @@ const Dashboard = () => {
           />
         </div>
 
-        <div className="glass-card">
-          <h3><Moon size={18} /> Sleep Hours</h3>
-          <Bar 
-            data={{
-              labels: filteredHistory.map(log => log.date),
-              datasets: [{
-                label: 'Hours',
-                data: filteredHistory.map(log => log.sleepHours),
-                backgroundColor: '#3b82f6',
-                borderRadius: 5
-              }]
-            }}
-            options={{ scales: { y: { min: 0, max: 24, ticks: { color: 'white' } }, x: { ticks: { color: 'white' } } } }}
-          />
-        </div>
       </div>
     </div>
   );
