@@ -18,7 +18,7 @@ const Auth = ({ onLogin }) => {
     
     try {
       // We send the formData object which contains { username, password }
-      const res = await axios.post(`https://salahtracker-tpg0.onrender.com/api/auth/${endpoint}`, formData);
+      const res = await axios.post(`/api/auth/${endpoint}`, formData);
       
       if (isLogin) {
         localStorage.setItem('token', res.data.token);

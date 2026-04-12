@@ -33,7 +33,7 @@ const Dashboard = () => {
   const fetchHistory = async () => {
     const token = localStorage.getItem('token');
     try {
-      const res = await axios.get('https://salahtracker-tpg0.onrender.com/api/logs/all', {
+      const res = await axios.get('/api/logs/all', {
         headers: { 'x-auth-token': token }
       });
       setHistory(res.data);
@@ -79,7 +79,7 @@ const Dashboard = () => {
   const saveDailyData = async () => {
     const token = localStorage.getItem('token');
     try {
-      await axios.post('https://salahtracker-tpg0.onrender.com/api/logs/daily', {
+      await axios.post('/api/logs/daily', {
         salah,
         sleepHours: sleep,
         productivityPercentage: manualProductivity,
