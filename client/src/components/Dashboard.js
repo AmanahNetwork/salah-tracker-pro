@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Moon, Activity, BarChart3, PieChart as PieIcon, Save, Calendar, Clock } from 'lucide-react';
+import { Moon, Activity, BarChart3, PieChart as PieIcon, Save, Clock } from 'lucide-react';
 import { Line, Pie, Bar } from 'react-chartjs-2';
 import { 
   Chart as ChartJS, 
