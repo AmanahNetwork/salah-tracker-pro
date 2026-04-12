@@ -46,6 +46,5 @@ app.post('/api/auth/login', async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
-
 // IMPORTANT: Export the app for Vercel
 module.exports = app;
