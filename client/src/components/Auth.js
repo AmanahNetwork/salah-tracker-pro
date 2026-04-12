@@ -1,10 +1,9 @@
 import React, { useState } from 'react';
-import axios from 'axios';
+import API from '../api/axios'; // Integrated your central API instance
 import { Lock, User, LogIn, UserPlus } from 'lucide-react';
 
 const Auth = ({ onLogin }) => {
   const [isLogin, setIsLogin] = useState(true);
-  // Keep the key as 'username' because that is what your Backend/Mongoose requires
   const [formData, setFormData] = useState({ username: '', password: '' });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -17,25 +16,25 @@ const Auth = ({ onLogin }) => {
     const endpoint = isLogin ? 'login' : 'register';
     
     try {
-      // We send the formData object which contains { username, password }
-      const res = await axios.post(`/api/auth/${endpoint}`, formData);
+      // Switched from axios.post to API.post to use the Vercel BaseURL
+      const res = await API.post(`/api/auth/${endpoint}`, formData);
       
       if (isLogin) {
+        // Store session data
         localStorage.setItem('token', res.data.token);
         localStorage.setItem('username', res.data.user.username);
         onLogin(); 
       } else {
         alert("Registration successful! You can now log in.");
-        setIsLogin(true); // Switch to login view
-        // Optional: Clear the password but keep the username for easy login
+        setIsLogin(true); 
         setFormData({ ...formData, password: '' });
       }
     } catch (err) {
-      // Capture the specific 'Path username is required' error or any other backend msg
+      // Detailed error catching for a better mobile experience
       const message = err.response?.data?.message || 
                       err.response?.data?.error || 
                       err.response?.data?.msg || 
-                      "Connection failed. Please check your internet.";
+                      "Connection failed. Ensure your backend is running.";
       setError(message);
     } finally {
       setLoading(false);
@@ -46,6 +45,7 @@ const Auth = ({ onLogin }) => {
     <div className="auth-container">
       <div className="glass-card auth-card">
         <div className="auth-header">
+          {/* Dynamic Icon color based on state */}
           {isLogin ? <LogIn size={32} color="#10b981" /> : <UserPlus size={32} color="#3b82f6" />}
           <h2>{isLogin ? "Welcome Back" : "Create Account"}</h2>
           <p>{isLogin ? "Monitor your spiritual growth" : "Start your journey today"}</p>
@@ -59,7 +59,6 @@ const Auth = ({ onLogin }) => {
               placeholder="Username or Email" 
               required 
               value={formData.username}
-              // This updates the 'username' key regardless of what the user types
               onChange={(e) => setFormData({...formData, username: e.target.value})}
             />
           </div>
@@ -75,19 +74,37 @@ const Auth = ({ onLogin }) => {
             />
           </div>
 
-          {error && <p className="error-msg" style={{ color: '#ef4444', fontSize: '0.85rem', marginTop: '10px', textAlign: 'center' }}>{error}</p>}
+          {error && (
+            <p className="error-msg" style={{ 
+              color: '#ef4444', 
+              fontSize: '0.85rem', 
+              marginTop: '10px', 
+              textAlign: 'center',
+              background: 'rgba(239, 68, 68, 0.1)',
+              padding: '8px',
+              borderRadius: '6px'
+            }}>
+              {error}
+            </p>
+          )}
 
           <button 
             type="submit" 
             className="submit-btn auth-btn" 
             disabled={loading}
-            style={{ marginTop: '20px', opacity: loading ? 0.7 : 1 }}
+            style={{ 
+              marginTop: '20px', 
+              opacity: loading ? 0.7 : 1,
+              width: '100%',
+              padding: '12px',
+              cursor: loading ? 'not-allowed' : 'pointer'
+            }}
           >
             {loading ? "Processing..." : (isLogin ? "Login" : "Register")}
           </button>
         </form>
 
-        <p className="toggle-auth">
+        <p className="toggle-auth" style={{ textAlign: 'center', marginTop: '15px', fontSize: '0.9rem' }}>
           {isLogin ? "New here?" : "Already have an account?"} 
           <span 
             onClick={() => {
