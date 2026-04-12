@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Moon, Activity, BarChart3, PieChart as PieIcon, Save, Clock, ChevronRight } from 'lucide-react';
+import { Moon, Activity, BarChart3, PieChart as PieIcon, Save, Clock } from 'lucide-react';
 import { Line, Pie, Bar } from 'react-chartjs-2';
 import { 
   Chart as ChartJS, 
@@ -25,10 +25,9 @@ const Dashboard = () => {
   const [sleep, setSleep] = useState(7);
   const [manualProductivity, setManualProductivity] = useState(50);
   const [salah, setSalah] = useState({ fajr: 0, dhuhr: 0, asr: 0, maghrib: 0, isha: 0 });
-  const [viewMode, setViewMode] = useState('month'); // Changed default to 'month' as in your image
+  const [viewMode, setViewMode] = useState('month');
   const [showSuccess, setShowSuccess] = useState(false);
 
-  // View modes for the slider
   const modes = ['week', 'month', 'year'];
 
   const fetchHistory = async () => {
@@ -68,6 +67,16 @@ const Dashboard = () => {
     return logDate.getFullYear() === now.getFullYear();
   });
 
+  // Reusable Date Formatter for X-Axis Labels
+  const getChartLabels = () => {
+    return filteredHistory.map(log => {
+      const d = new Date(log.date);
+      return viewMode === 'year' 
+        ? d.toLocaleDateString('en-US', { month: 'short' }) 
+        : d.toLocaleDateString('en-US', { day: 'numeric', month: 'short' });
+    });
+  };
+
   const getSalahStats = () => {
     let counts = { Jamat: 0, Individual: 0, Qaza: 0, Missed: 0 };
     filteredHistory.forEach(log => {
@@ -105,14 +114,13 @@ const Dashboard = () => {
     }
   };
 
-  // Inline styling for the "3-point slider"
   const getSliderPointStyle = (mode) => ({
     width: '18px',
     height: '18px',
     borderRadius: '50%',
     border: '2px solid rgba(255,255,255,0.4)',
     cursor: 'pointer',
-    background: viewMode === mode ? '#10b981' : 'transparent', // Highlight selected mode
+    background: viewMode === mode ? '#10b981' : 'transparent',
     transition: '0.3s ease',
     boxShadow: viewMode === mode ? '0 0 10px #10b981' : 'none',
   });
@@ -120,14 +128,12 @@ const Dashboard = () => {
   return (
     <div className="dashboard-container" style={{ padding: '20px', color: 'white', maxWidth: '1200px', margin: '0 auto' }}>
       
-      {/* --- INPUT SECTION (Remains on top) --- */}
       <div className="glass-card" style={{ marginBottom: '20px' }}>
         <h2 style={{ marginBottom: '20px' }}>Daily Check-in</h2>
-        
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '25px' }}>
           <div>
             <p style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><Moon size={18} color="#3b82f6" /> Sleep: **{sleep}h**</p>
-            <input type="range" min="0" max="12" step="0.5" value={sleep} onChange={(e) => setSleep(parseFloat(e.target.value))} style={{width:'100%'}}/>
+            <input type="range" min="0" max="24" step="0.5" value={sleep} onChange={(e) => setSleep(parseFloat(e.target.value))} style={{width:'100%'}}/>
           </div>
           <div>
             <p style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><BarChart3 size={18} color="#f59e0b" /> Productivity: **{manualProductivity}%**</p>
@@ -162,7 +168,6 @@ const Dashboard = () => {
         </button>
       </div>
 
-      {/* --- NEW 3-POINT SLIDER UI --- */}
       <div className="glass-card" style={{ marginBottom: '20px', textAlign: 'center' }}>
         <h4 style={{ margin: '0 0 10px 0', color: '#94a3b8' }}>Select View</h4>
         <div style={{ display: 'flex', justifyContent: 'center', gap: '15px', textTransform: 'capitalize', fontWeight: 'bold' }}>
@@ -170,22 +175,15 @@ const Dashboard = () => {
             <span key={mode} style={{ color: viewMode === mode ? '#10b981' : 'rgba(255,255,255,0.6)' }}>{mode}</span>
           ))}
         </div>
-        
         <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0px', marginTop: '10px' }}>
-          {/* Week Point */}
-          <div style={getSliderPointStyle('week')} onClick={() => setViewMode('week')} title="Weekly View"></div>
-          {/* Connectors */}
+          <div style={getSliderPointStyle('week')} onClick={() => setViewMode('week')}></div>
           <div style={{ width: '60px', height: '2px', background: 'rgba(255,255,255,0.1)' }}></div>
-          {/* Month Point */}
-          <div style={getSliderPointStyle('month')} onClick={() => setViewMode('month')} title="Monthly View"></div>
-          {/* Connectors */}
+          <div style={getSliderPointStyle('month')} onClick={() => setViewMode('month')}></div>
           <div style={{ width: '60px', height: '2px', background: 'rgba(255,255,255,0.1)' }}></div>
-          {/* Year Point */}
-          <div style={getSliderPointStyle('year')} onClick={() => setViewMode('year')} title="Yearly View"></div>
+          <div style={getSliderPointStyle('year')} onClick={() => setViewMode('year')}></div>
         </div>
       </div>
 
-      {/* --- STATS SUMMARY (Sleep Card) --- */}
       <div className="glass-card" style={{ marginBottom: '20px', textAlign: 'center', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '15px' }}>
         <Clock size={24} color="#3b82f6" />
         <div>
@@ -194,10 +192,7 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* --- NEW VERTICAL STACK LAYOUT --- */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-        
-        {/* 1. PIE CHART */}
         <div className="glass-card" style={{ textAlign: 'center' }}>
           <h3><PieIcon size={18} /> Salah Distribution ({viewMode})</h3>
           <Pie 
@@ -205,7 +200,7 @@ const Dashboard = () => {
               labels: ['Jamat', 'Individual', 'Qaza', 'Missed'],
               datasets: [{
                 data: getSalahStats(),
-                backgroundColor: ['#10b981', '#3b82f6', '#f59e0b', '#64748b'], // Grey for Missed
+                backgroundColor: ['#10b981', '#3b82f6', '#f59e0b', '#64748b'],
                 borderColor: 'transparent'
               }]
             }}
@@ -213,13 +208,12 @@ const Dashboard = () => {
           />
         </div>
 
-        {/* 2. SLEEP HOURS (Bar) */}
         <div className="glass-card">
           <h3><Moon size={18} /> Sleep Hours</h3>
           <Bar 
-          key={`sleep-${viewMode}`}
+            key={`sleep-${viewMode}`}
             data={{
-              labels: filteredHistory.map(log => log.date),
+              labels: getChartLabels(), // Integration point
               datasets: [{
                 label: 'Hours',
                 data: filteredHistory.map(log => log.sleepHours),
@@ -227,17 +221,16 @@ const Dashboard = () => {
                 borderRadius: 5
               }]
             }}
-            options={{ scales: { y: { min: 0, max: 12, ticks: { color: 'white' } }, x: { ticks: { color: 'white' } } } }}
+            options={{ scales: { y: { min: 0, max: 24, ticks: { color: 'white' } }, x: { ticks: { color: 'white' } } } }}
           />
         </div>
 
-        {/* 3. PRODUCTIVITY % (Line) */}
         <div className="glass-card">
           <h3><Activity size={18} /> Productivity %</h3>
           <Line
             key={`prod-${viewMode}`} 
             data={{
-              labels: filteredHistory.map(log => log.date),
+              labels: getChartLabels(), // Integration point
               datasets: [{
                 label: 'Productivity',
                 data: filteredHistory.map(log => log.productivityPercentage),
@@ -250,7 +243,6 @@ const Dashboard = () => {
             options={{ scales: { y: { min: 0, max: 100, ticks: { color: 'white' } }, x: { ticks: { color: 'white' } } } }}
           />
         </div>
-
       </div>
     </div>
   );
