@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import API from '../api/axios'; 
+import API from '../api/axios.js'; 
 import { Moon, CheckCircle, Loader2, Activity, PieChart as PieIcon, BarChart3 } from 'lucide-react';
 import { Pie, Bar, Line } from 'react-chartjs-2';
 import { 
@@ -43,19 +43,12 @@ const Dashboard = () => {
     return logDate >= limit;
   });
 
-  // --- LOGIC FOR PERCENTAGE BARS ---
   const stats = (() => {
     if (filteredHistory.length === 0) return { sleep: "0", prod: "0", salah: "0" };
-    
-    // Salah %: Count any non-missed (1, 2, or 3) prayer
     const offered = filteredHistory.reduce((acc, log) => 
       acc + Object.values(log.salah || {}).filter(v => v > 0).length, 0);
-    
-    // Sleep %: (Total Hours / (Days * 24)) * 100
     const totalSleep = filteredHistory.reduce((acc, l) => acc + (l.sleepHours || 0), 0);
     const totalAvailableHours = filteredHistory.length * 24;
-    
-    // Productivity %: Direct average of logged values
     const avgProd = filteredHistory.reduce((acc, l) => acc + (l.productivityPercentage || 0), 0) / filteredHistory.length;
 
     return {
@@ -95,104 +88,145 @@ const Dashboard = () => {
 
   const chartLabels = filteredHistory.map(l => new Date(l.date).toLocaleDateString('en-US', { day: 'numeric', month: 'short' }));
 
+  // Shared chart options for responsiveness
+  const commonOptions = {
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { labels: { color: 'white', font: { size: 10 } } }
+    },
+    scales: {
+      x: { ticks: { color: '#94a3b8', font: { size: 10 } }, grid: { display: false } },
+      y: { ticks: { color: '#94a3b8', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.05)' } }
+    }
+  };
+
   return (
-    <div style={{ padding: '15px', maxWidth: '500px', margin: '0 auto', color: 'white', paddingBottom: '50px' }}>
+    <div style={{ padding: '10px', maxWidth: '1200px', margin: '0 auto', color: 'white', paddingBottom: '50px', fontFamily: 'sans-serif' }}>
       
-      {/* 1. TOP PERCENTAGE BARS */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', marginBottom: '20px' }}>
-        <div className="glass-card" style={{ textAlign: 'center', padding: '10px' }}>
-          <p style={{ fontSize: '0.6rem', color: '#94a3b8', margin: 0 }}>SALAH</p>
-          <h3 style={{ color: '#10b981', margin: '5px 0' }}>{stats.salah}%</h3>
-        </div>
-        <div className="glass-card" style={{ textAlign: 'center', padding: '10px' }}>
-          <p style={{ fontSize: '0.6rem', color: '#94a3b8', margin: 0 }}>DAY SLEPT</p>
-          <h3 style={{ color: '#3b82f6', margin: '5px 0' }}>{stats.sleep}%</h3>
-        </div>
-        <div className="glass-card" style={{ textAlign: 'center', padding: '10px' }}>
-          <p style={{ fontSize: '0.6rem', color: '#94a3b8', margin: 0 }}>PRODUCTIVE</p>
-          <h3 style={{ color: '#f59e0b', margin: '5px 0' }}>{stats.prod}%</h3>
-        </div>
-      </div>
-
-      {/* 2. DAILY INPUT */}
-      <div className="glass-card" style={{ padding: '20px', marginBottom: '20px' }}>
-        {isAlreadyLogged ? (
-          <div style={{ textAlign: 'center', color: '#10b981' }}><CheckCircle style={{ margin: '0 auto 5px' }} /><p>Daily Entry Synced</p></div>
-        ) : (
-          <>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '15px' }}>
-              <div>
-                <p style={{ fontSize: '0.75rem', marginBottom: '5px' }}><Moon size={14}/> {sleep}h Sleep</p>
-                <input type="range" min="0" max="24" step="0.5" value={sleep} onChange={(e) => setSleep(parseFloat(e.target.value))} style={{ width: '100%' }} />
-              </div>
-              <div>
-                <p style={{ fontSize: '0.75rem', marginBottom: '5px' }}><Activity size={14}/> {prod}% Prod</p>
-                <input type="range" min="0" max="100" value={prod} onChange={(e) => setProd(parseInt(e.target.value))} style={{ width: '100%' }} />
-              </div>
-            </div>
-            {['fajr', 'dhuhr', 'asr', 'maghrib', 'isha'].map(p => (
-              <div key={p} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', alignItems: 'center' }}>
-                <span style={{ textTransform: 'capitalize', fontSize: '0.8rem' }}>{p}</span>
-                <div style={{ display: 'flex', gap: '4px' }}>
-                  {[0, 1, 2, 3].map(n => (
-                    <button key={n} onClick={() => setSalah({ ...salah, [p]: n })}
-                      style={{ 
-                        padding: '4px 8px', fontSize: '0.65rem', borderRadius: '4px', border: 'none',
-                        background: salah[p] === n ? (n === 0 ? '#ef4444' : '#10b981') : 'rgba(255,255,255,0.1)',
-                        color: 'white', cursor: 'pointer'
-                      }}>{n === 0 ? 'M' : n === 1 ? 'Q' : n === 2 ? 'I' : 'J'}</button>
-                  ))}
-                </div>
-              </div>
-            ))}
-            <button className="submit-btn" disabled={isSubmitting} onClick={handleSave} style={{ width: '100%', marginTop: '10px', height: '40px' }}>
-              {isSubmitting ? <Loader2 className="animate-spin" /> : 'Sync Today'}
-            </button>
-          </>
-        )}
-      </div>
-
-      {/* 3. TIME FILTER */}
-      <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', marginBottom: '15px' }}>
-        {['week', 'month', 'year'].map(m => (
-          <button key={m} onClick={() => setViewMode(m)} style={{
-            background: viewMode === m ? '#10b981' : 'transparent',
-            border: '1px solid #10b981', color: 'white', padding: '4px 12px', borderRadius: '15px', fontSize: '0.7rem'
-          }}>{m}</button>
+      {/* 1. TOP STATS - Responsive Grid */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))', gap: '10px', marginBottom: '20px' }}>
+        {[
+          { label: 'SALAH', val: stats.salah, color: '#10b981' },
+          { label: 'SLEEP', val: stats.sleep, color: '#3b82f6' },
+          { label: 'PROD', val: stats.prod, color: '#f59e0b' }
+        ].map(item => (
+          <div key={item.label} className="glass-card" style={{ textAlign: 'center', padding: '15px' }}>
+            <p style={{ fontSize: '0.7rem', color: '#94a3b8', margin: 0, fontWeight: 'bold' }}>{item.label}</p>
+            <h3 style={{ color: item.color, margin: '5px 0', fontSize: '1.4rem' }}>{item.val}%</h3>
+          </div>
         ))}
       </div>
 
-      {/* 4. ANALYTICS GRAPHS */}
-      <div className="glass-card" style={{ padding: '15px', marginBottom: '15px' }}>
-        <h4 style={{ fontSize: '0.8rem', margin: '0 0 10px 0' }}><PieIcon size={14} /> Salah Distribution</h4>
-        <Pie data={{
-            labels: ['Jamat', 'Indiv', 'Qaza', 'Missed'],
-            datasets: [{ data: salahStats(), backgroundColor: ['#10b981', '#3b82f6', '#f59e0b', '#ef4444'], borderWidth: 0 }]
-          }} 
-          options={{ plugins: { legend: { position: 'bottom', labels: { color: 'white', font: { size: 10 } } } } }} 
-        />
-      </div>
+      {/* 2. MAIN CONTENT LAYOUT */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '20px' }}>
+        
+        {/* Daily Inputs Card */}
+        <div className="glass-card" style={{ padding: '20px' }}>
+          {isAlreadyLogged ? (
+            <div style={{ textAlign: 'center', color: '#10b981', padding: '20px' }}>
+              <CheckCircle style={{ margin: '0 auto 10px' }} size={32} />
+              <p style={{ fontWeight: 'bold' }}>Daily Entry Synced</p>
+            </div>
+          ) : (
+            <>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '15px', marginBottom: '20px' }}>
+                <div>
+                  <p style={{ fontSize: '0.8rem', marginBottom: '8px' }}><Moon size={14}/> {sleep}h Sleep</p>
+                  <input type="range" min="0" max="24" step="0.5" value={sleep} onChange={(e) => setSleep(parseFloat(e.target.value))} style={{ width: '100%', cursor: 'pointer' }} />
+                </div>
+                <div>
+                  <p style={{ fontSize: '0.8rem', marginBottom: '8px' }}><Activity size={14}/> {prod}% Productivity</p>
+                  <input type="range" min="0" max="100" value={prod} onChange={(e) => setProd(parseInt(e.target.value))} style={{ width: '100%', cursor: 'pointer' }} />
+                </div>
+              </div>
 
-      <div className="glass-card" style={{ padding: '15px', marginBottom: '15px' }}>
-        <h4 style={{ fontSize: '0.8rem', margin: '0 0 10px 0' }}><BarChart3 size={14} /> Sleep Trend (Hours)</h4>
-        <Bar data={{
-            labels: chartLabels,
-            datasets: [{ label: 'Hrs', data: filteredHistory.map(l => l.sleepHours), backgroundColor: '#3b82f6' }]
-          }} 
-          options={{ scales: { y: { ticks: { color: 'white' } }, x: { ticks: { color: 'white' } } } }} 
-        />
-      </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {['fajr', 'dhuhr', 'asr', 'maghrib', 'isha'].map(p => (
+                  <div key={p} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                    <span style={{ textTransform: 'capitalize', fontSize: '0.9rem' }}>{p}</span>
+                    <div style={{ display: 'flex', gap: '4px' }}>
+                      {[0, 1, 2, 3].map(n => (
+                        <button key={n} onClick={() => setSalah({ ...salah, [p]: n })}
+                          style={{ 
+                            width: '32px', height: '32px', fontSize: '0.7rem', borderRadius: '6px', border: 'none',
+                            background: salah[p] === n ? (n === 0 ? '#ef4444' : '#10b981') : 'rgba(255,255,255,0.1)',
+                            color: 'white', cursor: 'pointer', transition: '0.2s'
+                          }}>{n === 0 ? 'M' : n === 1 ? 'Q' : n === 2 ? 'I' : 'J'}</button>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <button className="submit-btn" disabled={isSubmitting} onClick={handleSave} style={{ width: '100%', marginTop: '20px', height: '45px', fontWeight: 'bold', borderRadius: '8px' }}>
+                {isSubmitting ? <Loader2 className="animate-spin" /> : 'Sync Today'}
+              </button>
+            </>
+          )}
+        </div>
 
-      <div className="glass-card" style={{ padding: '15px' }}>
-        <h4 style={{ fontSize: '0.8rem', margin: '0 0 10px 0' }}><Activity size={14} /> Productivity Trend (%)</h4>
-        <Line data={{
-            labels: chartLabels,
-            datasets: [{ label: '%', data: filteredHistory.map(l => l.productivityPercentage), borderColor: '#f59e0b', tension: 0.3 }]
-          }} 
-          options={{ scales: { y: { ticks: { color: 'white' } }, x: { ticks: { color: 'white' } } } }} 
-        />
-      </div>
+        {/* 3. TIME FILTER NAVIGATION */}
+        <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', marginBottom: '10px' }}>
+          {['week', 'month', 'year'].map(m => (
+            <button key={m} onClick={() => setViewMode(m)} style={{
+              background: viewMode === m ? '#10b981' : 'rgba(255,255,255,0.05)',
+              border: '1px solid #10b981', color: 'white', padding: '6px 16px', borderRadius: '20px', fontSize: '0.8rem', cursor: 'pointer'
+            }}>{m.toUpperCase()}</button>
+          ))}
+        </div>
 
+        {/* 4. ANALYTICS GRID - Multi-chart Layout */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
+          
+          {/* Salah Pie Chart */}
+          <div className="glass-card" style={{ padding: '20px' }}>
+            <h4 style={{ margin: '0 0 15px 0', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <PieIcon size={16} /> Salah Distribution
+            </h4>
+            <div style={{ height: '250px', position: 'relative' }}>
+               <Pie 
+                 data={{
+                   labels: ['Jamat', 'Indiv', 'Qaza', 'Missed'],
+                   datasets: [{ data: salahStats(), backgroundColor: ['#10b981', '#3b82f6', '#f59e0b', '#ef4444'], borderWidth: 0 }]
+                 }} 
+                 options={{ ...commonOptions, plugins: { ...commonOptions.plugins, legend: { position: 'bottom', labels: { color: 'white' } } } }} 
+               />
+            </div>
+          </div>
+
+          {/* Sleep Bar Chart */}
+          <div className="glass-card" style={{ padding: '20px' }}>
+            <h4 style={{ margin: '0 0 15px 0', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <BarChart3 size={16} /> Sleep Trend (Hrs)
+            </h4>
+            <div style={{ height: '250px' }}>
+               <Bar 
+                 data={{
+                   labels: chartLabels,
+                   datasets: [{ label: 'Hrs', data: filteredHistory.map(l => l.sleepHours), backgroundColor: '#3b82f6', borderRadius: 4 }]
+                 }} 
+                 options={commonOptions} 
+               />
+            </div>
+          </div>
+
+          {/* Productivity Line Chart */}
+          <div className="glass-card" style={{ padding: '20px' }}>
+            <h4 style={{ margin: '0 0 15px 0', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Activity size={16} /> Productivity Trend (%)
+            </h4>
+            <div style={{ height: '250px' }}>
+               <Line 
+                 data={{
+                   labels: chartLabels,
+                   datasets: [{ label: '%', data: filteredHistory.map(l => l.productivityPercentage), borderColor: '#f59e0b', tension: 0.3, fill: true, backgroundColor: 'rgba(245, 158, 11, 0.1)' }]
+                 }} 
+                 options={commonOptions} 
+               />
+            </div>
+          </div>
+
+        </div>
+      </div>
     </div>
   );
 };

@@ -7,18 +7,35 @@ body {
   overflow-x: hidden; /* Prevent horizontal scroll on mobile */
 }
 
+/* Custom Scrollbar for better dark-theme look */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-thumb {
+  background: #334155;
+  border-radius: 10px;
+}
+
 /* --- Layout Containers --- */
 .dashboard-container {
-  padding: 40px;
+  padding: 15px; /* Default mobile padding */
   display: flex;
   flex-direction: column;
   align-items: center;
   min-height: 100vh;
   max-width: 1200px;
   margin: 0 auto;
+  box-sizing: border-box;
 }
 
-/* TOP HEADER SLOT FIX (Logo & Logout) */
+/* Desktop Tweaks */
+@media (min-width: 768px) {
+  .dashboard-container {
+    padding: 40px;
+  }
+}
+
+/* TOP HEADER SLOT (Logo & Logout) */
 .top-header-slot {
   display: flex;
   justify-content: space-between;
@@ -34,7 +51,7 @@ body {
 }
 
 .header-logo {
-  height: 40px; /* Adjust based on your image size */
+  height: 40px;
   width: auto;
   object-fit: contain;
 }
@@ -56,14 +73,21 @@ body {
   box-sizing: border-box;
   box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
   margin-bottom: 20px;
+  transition: transform 0.2s ease;
 }
 
 /* Grid for the 3 charts */
 .charts-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  grid-template-columns: 1fr; /* Stacks on mobile */
   gap: 20px;
   width: 100%;
+}
+
+@media (min-width: 768px) {
+  .charts-grid {
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  }
 }
 
 /* --- Components --- */
@@ -95,10 +119,15 @@ body {
   transition: all 0.2s;
 }
 
-.submit-btn:hover {
+.submit-btn:hover:not(:disabled) {
   background: #059669;
   transform: translateY(-2px);
   box-shadow: 0 8px 20px rgba(16, 185, 129, 0.4);
+}
+
+.submit-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 /* --- Auth Styling --- */
@@ -141,42 +170,28 @@ body {
   box-sizing: border-box;
 }
 
-/* --- Mobile Responsive Fixes (768px and below) --- */
+/* --- Mobile Specific Refinements --- */
 @media (max-width: 768px) {
-  .dashboard-container {
-    padding: 15px !important;
-  }
-
-  .top-header-slot {
-    padding: 10px 15px !important;
-    border-radius: 15px;
-  }
-
   .header-logo {
-    height: 32px; /* Smaller logo for mobile */
+    height: 32px;
   }
 
   .glass-card {
-    padding: 20px !important;
-    border-radius: 18px !important;
-  }
-
-  .charts-grid {
-    grid-template-columns: 1fr; /* Force 1 column on mobile */
+    padding: 20px;
+    border-radius: 18px;
   }
 
   canvas {
-    max-height: 280px !important; /* Prevents charts from being too tall */
+    max-height: 280px !important;
   }
 
   /* Make Salah buttons easier to tap */
   .salah-btn-group button {
-    padding: 8px 10px !important;
+    padding: 8px 10px;
     font-size: 13px;
   }
 }
 
-/* Extra small screens (Phones in portrait) */
 @media (max-width: 400px) {
   .top-header-slot {
     flex-direction: column;

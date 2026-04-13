@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import API from '../api/axios'; // Integrated your central API instance
+import API from '../api/axios.js'; // Integrated your central API instance
 import { Lock, User, LogIn, UserPlus } from 'lucide-react';
 
 const Auth = ({ onLogin }) => {
