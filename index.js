@@ -1,5 +1,6 @@
 const express = require('express');
 const mongoose = require('mongoose');
+const app = express();
 const cors = require('cors');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
@@ -7,8 +8,6 @@ require('dotenv').config();
 
 const User = require('./models/User');
 const DailyLog = require('./models/DailyLog');
-
-const app = express();
 app.use(express.json());
 app.use(cors()); 
 
