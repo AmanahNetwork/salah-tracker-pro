@@ -84,12 +84,12 @@ app.post('/api/logs/daily', auth, async (req, res) => {
 // --- SERVE FRONTEND (CRITICAL PLACEMENT) ---
 
 // 1. Serve static files from the React build folder
-app.use(express.static(path.join(__dirname, 'client/build')));
+app.use(express.static('client/build'));
 
 // 2. The "Catch-all" handler for React Routing
 // This MUST be the last route before module.exports
 app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'client/build', 'index.html'));
+  res.sendFile(path.resolve( 'client/build', 'index.html'));
 });
 
 module.exports = app;
