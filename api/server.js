@@ -88,18 +88,18 @@ app.post('/api/logs/daily', async (req, res) => {
   try {
     await connectDB();
     const token = req.header('Authorization')?.replace('Bearer ', '');
-    if (!token) return res.status(401).json({ msg: "No token, authorization denied" });
-
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const { date, prayers } = req.body;
 
-    // Use findOneAndUpdate with upsert: true to either update existing or create new
+    // Get the exact keys sent from dashboard.js
+    const { date, salah, sleepHours, productivityPercentage } = req.body;
+
     const log = await DailyLog.findOneAndUpdate(
       { userId: decoded.id, date: date },
-      { salah: salah,
-        sleep: sleep, 
-        productivity: productivity
-       },
+      { 
+        salah,           // Matches { fajr, dhuhr, etc. }
+        sleepHours,      // Corrected name
+        productivityPercentage // Corrected name
+      },
       { upsert: true, new: true }
     );
 
