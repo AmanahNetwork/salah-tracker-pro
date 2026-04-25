@@ -7,8 +7,8 @@ const bcrypt = require('bcryptjs');
 const path = require('path'); // Added path
 require('dotenv').config();
 
-const User = require('./models/User');
-const DailyLog = require('./models/DailyLog');
+const User = require('../models/User');
+const DailyLog = require('../models/DailyLog');
 
 app.use(express.json());
 app.use(cors()); 
