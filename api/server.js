@@ -1,19 +1,29 @@
 const express = require('express');
 const mongoose = require('mongoose');
-const app = express();
 const cors = require('cors');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
-const path = require('path'); // Added path
+const path = require('path');
 require('dotenv').config();
 
+const app = express();
+
+// --- MODELS ---
+// Note: We use '../' because server.js is inside the /api folder
 const User = require('../models/User');
 const DailyLog = require('../models/DailyLog');
 
+// --- MIDDLEWARE ---
 app.use(express.json());
-app.use(cors()); 
+app.use(cors());
 
-mongoose.connect(process.env.MONGO_URI);
+// --- DATABASE CONNECTION ---
+// Stop Mongoose from buffering commands if the connection is down
+mongoose.set('bufferCommands', false);
+
+mongoose.connect(process.env.MONGO_URI)
+  .then(() => console.log("✅ MongoDB Connected Successfully"))
+  .catch(err => console.error("❌ MongoDB Connection Error:", err));
 
 // --- AUTH MIDDLEWARE ---
 const auth = (req, res, next) => {
@@ -35,6 +45,7 @@ app.post('/api/auth/register', async (req, res) => {
     const { username, password } = req.body;
     let user = await User.findOne({ username });
     if (user) return res.status(400).json({ msg: "User already exists" });
+    
     user = new User({ username, password });
     await user.save();
     res.json({ msg: "User registered successfully" });
@@ -44,15 +55,19 @@ app.post('/api/auth/register', async (req, res) => {
 });
 
 app.post('/api/auth/login', async (req, res) => {
+  console.log(`Login attempt for user: ${req.body.username}`);
   try {
     const { username, password } = req.body;
     const user = await User.findOne({ username });
     if (!user) return res.status(400).json({ msg: "Invalid credentials" });
+
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) return res.status(400).json({ msg: "Invalid credentials" });
+
     const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
     res.json({ token, user: { id: user._id, username: user.username } });
   } catch (err) {
+    console.error("Login Error:", err.message);
     res.status(500).json({ error: err.message });
   }
 });
@@ -81,15 +96,15 @@ app.post('/api/logs/daily', auth, async (req, res) => {
   }
 });
 
-// --- SERVE FRONTEND (CRITICAL PLACEMENT) ---
+// --- SERVE FRONTEND ---
 
-// 1. Serve static files from the React build folder
-app.use(express.static('client/build'));
+// Serve static files from the React build folder
+// We use path.join(__dirname, '../...') because this file is in the /api folder
+app.use(express.static(path.join(__dirname, '../client/build')));
 
-// 2. The "Catch-all" handler for React Routing
-// This MUST be the last route before module.exports
+// The "Catch-all" handler for React Routing
 app.get('*', (req, res) => {
-  res.sendFile(path.resolve( 'client/build', 'index.html'));
+  res.sendFile(path.join(__dirname, '../client/build', 'index.html'));
 });
 
 module.exports = app;
