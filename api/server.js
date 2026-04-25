@@ -7,6 +7,7 @@ const path = require('path');
 require('dotenv').config();
 
 const app = express();
+const PORT = process.env.PORT || 5000;
 
 const User = require('../models/User');
 const DailyLog = require('../models/DailyLog');
@@ -14,30 +15,31 @@ const DailyLog = require('../models/DailyLog');
 app.use(express.json());
 app.use(cors());
 
-// --- DATABASE CONNECTION HELPER ---
-let isConnected = false; // Track connection status
+// --- DATABASE CONNECTION ---
+mongoose.set('strictQuery', true);
+
+// Global connection state
+let isConnected = false;
 
 const connectDB = async () => {
-  mongoose.set('strictQuery', true);
-  
-  if (isConnected) {
-    return;
-  }
-
+  if (isConnected) return;
   try {
     const db = await mongoose.connect(process.env.MONGO_URI);
     isConnected = db.connections[0].readyState;
     console.log("✅ MongoDB Connected");
   } catch (err) {
-    console.error("❌ MongoDB Connection Error:", err);
-    throw err;
+    console.error("❌ MongoDB Connection Error:", err.message);
+    // We don't "throw" here to prevent Render from crashing immediately
   }
 };
+
+// Initial call to connect (for Render/Always-on)
+connectDB();
 
 // --- AUTH ROUTES ---
 app.post('/api/auth/register', async (req, res) => {
   try {
-    await connectDB(); // Ensure DB is connected before query
+    await connectDB(); 
     const { username, password } = req.body;
     let user = await User.findOne({ username });
     if (user) return res.status(400).json({ msg: "User already exists" });
@@ -52,7 +54,7 @@ app.post('/api/auth/register', async (req, res) => {
 
 app.post('/api/auth/login', async (req, res) => {
   try {
-    await connectDB(); // Ensure DB is connected before query
+    await connectDB();
     const { username, password } = req.body;
     const user = await User.findOne({ username });
     if (!user) return res.status(400).json({ msg: "Invalid credentials" });
@@ -71,7 +73,7 @@ app.post('/api/auth/login', async (req, res) => {
 app.get('/api/logs/all', async (req, res) => {
   try {
     await connectDB();
-    // (Add your auth middleware check here as needed)
+    // Assuming you have middleware setting req.user, otherwise replace with query logic
     const logs = await DailyLog.find({ userId: req.user }).sort({ date: 1 });
     res.json(logs);
   } catch (err) {
@@ -79,16 +81,20 @@ app.get('/api/logs/all', async (req, res) => {
   }
 });
 
-// ... Keep your other routes but add `await connectDB();` at the start of each
-
 // --- SERVE FRONTEND ---
 app.use(express.static(path.join(__dirname, '../client/build')));
 
 app.get('*', (req, res) => {
-    if (req.path.startsWith('/api')) {
+  if (req.path.startsWith('/api')) {
     return res.status(404).json({ error: 'API route not found' });
   }
   res.sendFile(path.join(__dirname, '../client/build', 'index.html'));
+});
+
+// --- SERVER START ---
+// This ensures the server always listens, which Render requires.
+app.listen(PORT, () => {
+  console.log(`🚀 Server running on port ${PORT}`);
 });
 
 module.exports = app;
