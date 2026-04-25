@@ -2,7 +2,7 @@ import axios from 'axios';
 
 const API = axios.create({
   // Use your actual backend URL here
-  baseURL: process.env.REACT_APP_API_URL || '/', 
+  baseURL: '/api' 
 });
 
 // Add your token logic if you're using it
