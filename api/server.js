@@ -96,7 +96,10 @@ app.post('/api/logs/daily', async (req, res) => {
     // Use findOneAndUpdate with upsert: true to either update existing or create new
     const log = await DailyLog.findOneAndUpdate(
       { userId: decoded.id, date: date },
-      { prayers: prayers },
+      { salah: salah,
+        sleep: sleep, 
+        productivity: productivity
+       },
       { upsert: true, new: true }
     );
 
