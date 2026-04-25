@@ -35,7 +35,7 @@ const connectDB = async () => {
 };
 
 // --- AUTH ROUTES ---
-app.post('/api/auth/register', async (req, res) => {
+app.post('/auth/register', async (req, res) => {
   try {
     await connectDB(); // Ensure DB is connected before query
     const { username, password } = req.body;
@@ -50,7 +50,7 @@ app.post('/api/auth/register', async (req, res) => {
   }
 });
 
-app.post('/api/auth/login', async (req, res) => {
+app.post('/auth/login', async (req, res) => {
   try {
     await connectDB(); // Ensure DB is connected before query
     const { username, password } = req.body;
@@ -68,7 +68,7 @@ app.post('/api/auth/login', async (req, res) => {
 });
 
 // --- LOGS ROUTES ---
-app.get('/api/logs/all', async (req, res) => {
+app.get('/logs/all', async (req, res) => {
   try {
     await connectDB();
     // (Add your auth middleware check here as needed)
@@ -85,6 +85,9 @@ app.get('/api/logs/all', async (req, res) => {
 app.use(express.static(path.join(__dirname, '../client/build')));
 
 app.get('*', (req, res) => {
+    if (req.path.startsWith('/api')) {
+    return res.status(404).json({ error: 'API route not found' });
+  }
   res.sendFile(path.join(__dirname, '../client/build', 'index.html'));
 });
 
