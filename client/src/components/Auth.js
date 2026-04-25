@@ -17,7 +17,7 @@ const Auth = ({ onLogin }) => {
     
     try {
       // Switched from axios.post to API.post to use the Vercel BaseURL
-      const res = await API.post(`/api/auth/${endpoint}`, formData);
+      const res = await API.post(`/auth/${endpoint}`, formData);
       
       if (isLogin) {
         // Store session data
