@@ -21,7 +21,7 @@ const Dashboard = () => {
 
   const fetchHistory = useCallback(async () => {
     try {
-      const res = await API.get('/logs/all');
+      const res = await API.get('/api/logs/all');
       setHistory(res.data);
     } catch (err) {
       if (err.response?.status === 401) {
@@ -62,7 +62,7 @@ const Dashboard = () => {
     if (isSubmitting || isAlreadyLogged) return;
     setIsSubmitting(true);
     try {
-      await API.post('/logs/daily', { 
+      await API.post('/api/logs/daily', { 
         salah, 
         sleepHours: sleep, 
         productivityPercentage: prod, 
