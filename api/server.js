@@ -18,9 +18,7 @@ app.use(cors());
 // --- DATABASE CONNECTION ---
 mongoose.set('strictQuery', true);
 
-// Global connection state
 let isConnected = false;
-
 const connectDB = async () => {
   if (isConnected) return;
   try {
@@ -29,11 +27,10 @@ const connectDB = async () => {
     console.log("✅ MongoDB Connected");
   } catch (err) {
     console.error("❌ MongoDB Connection Error:", err.message);
-    // We don't "throw" here to prevent Render from crashing immediately
   }
 };
 
-// Initial call to connect (for Render/Always-on)
+// Initialize connection
 connectDB();
 
 // --- AUTH ROUTES ---
@@ -70,18 +67,48 @@ app.post('/api/auth/login', async (req, res) => {
 });
 
 // --- LOGS ROUTES ---
+
+// GET: Fetch all logs for the logged-in user
 app.get('/api/logs/all', async (req, res) => {
   try {
     await connectDB();
-    // Assuming you have middleware setting req.user, otherwise replace with query logic
-    const logs = await DailyLog.find({ userId: req.user }).sort({ date: 1 });
+    const token = req.header('Authorization')?.replace('Bearer ', '');
+    if (!token) return res.status(401).json({ msg: "No token, authorization denied" });
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const logs = await DailyLog.find({ userId: decoded.id }).sort({ date: 1 });
     res.json(logs);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
+// POST: Sync/Save daily log
+app.post('/api/logs/daily', async (req, res) => {
+  try {
+    await connectDB();
+    const token = req.header('Authorization')?.replace('Bearer ', '');
+    if (!token) return res.status(401).json({ msg: "No token, authorization denied" });
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const { date, prayers } = req.body;
+
+    // Use findOneAndUpdate with upsert: true to either update existing or create new
+    const log = await DailyLog.findOneAndUpdate(
+      { userId: decoded.id, date: date },
+      { prayers: prayers },
+      { upsert: true, new: true }
+    );
+
+    res.json(log);
+  } catch (err) {
+    console.error("Sync Error:", err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // --- SERVE FRONTEND ---
+// Static files must come AFTER API routes
 app.use(express.static(path.join(__dirname, '../client/build')));
 
 app.get('*', (req, res) => {
@@ -92,7 +119,6 @@ app.get('*', (req, res) => {
 });
 
 // --- SERVER START ---
-// This ensures the server always listens, which Render requires.
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
 });
