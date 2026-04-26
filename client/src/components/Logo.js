@@ -4,8 +4,8 @@ const Logo = ({ height = 60 }) => {
   return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <img 
-        src="/mizan-refined.png" 
-        alt="Mizan Logo" 
+        src="/PRODUCTIVITY_TRACKER.png" 
+        alt="PRODUCTIVITY TRACKER" 
         style={{ 
           height: `${height}px`,
           // This adds a soft golden glow and sharpens the gold lines
