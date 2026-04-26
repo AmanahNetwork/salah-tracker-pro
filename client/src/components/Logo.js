@@ -4,7 +4,7 @@ const Logo = ({ height = 60 }) => {
   return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <img 
-        src="/PRODUCTIVITY_TRACKER.png" 
+        src="/prd.png" 
         alt="PRODUCTIVITY TRACKER" 
         style={{ 
           height: `${height}px`,
