@@ -72,11 +72,28 @@ useEffect(() => {
 
     filteredHistory.forEach(log => {
       Object.values(log.salah || {}).forEach(val => {
+        // Guard against internal MongoDB keys if they exist
+        if (typeof val !== 'string') return; 
+
         recordedPrayers++;
-        if (val === 3) { counts.Jammat++; earnedPoints += 3; }
-        else if (val === 2) { counts.Individual++; earnedPoints += 2; }
-        else if (val === 1) { counts.Qaza++; earnedPoints += 1; }
-        else counts.Missed++;
+
+        // Match against the STRINGS coming from your backend
+        if (val === 'Jammat') { 
+          counts.Jammat++; 
+          earnedPoints += 3; 
+        }
+        else if (val === 'Individual') { 
+          counts.Individual++; 
+          earnedPoints += 2; 
+        }
+        else if (val === 'Qaza') { 
+          counts.Qaza++; 
+          earnedPoints += 1; 
+        }
+        else {
+          // This covers 'Missed'
+          counts.Missed++;
+        }
       });
     });
 
