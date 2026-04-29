@@ -275,7 +275,7 @@ useEffect(() => {
             <div style={{ height: '250px', position: 'relative' }}>
                <Pie 
                  data={{
-                   labels: ['Jammat', 'Indiv', 'Qaza', 'Missed'],
+                   labels: ['Jammat', 'Individual', 'Qaza', 'Missed'],
                    datasets: [{ data: allStats.counts, backgroundColor: ['#10b981', '#3b82f6', '#f59e0b', '#ef4444'], borderWidth: 0 }]
                  }} 
                  options={{ ...commonOptions, plugins: { ...commonOptions.plugins, legend: { position: 'bottom', labels: { color: 'white' } } } }} 
