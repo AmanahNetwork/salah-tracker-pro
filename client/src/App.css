@@ -204,3 +204,21 @@ body {
     gap: 8px;
   }
 }
+.picker-container {
+  background: rgba(255, 255, 255, 0.03) !important;
+  border-radius: 12px;
+}
+
+.picker-item {
+  color: #64748b !important; /* Muted gray */
+}
+
+.picker-item-selected {
+  color: #10b981 !important; /* Your signature Green */
+  background: rgba(16, 185, 129, 0.1) !important;
+}
+
+/* Hide the default scrollbar of the picker for a cleaner look */
+.picker-column::-webkit-scrollbar {
+  display: none;
+}
