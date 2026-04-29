@@ -18,7 +18,7 @@ const [waketime, setWaketime] = useState({ hour: '07', minute: '00', ampm: 'AM' 
 
 const selections = {
   hour: ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'],
-  minute: ['00', '15', '30', '45'], // Increments of 15 make it easier to scroll
+  minute: ['00', '05', '10', '15', '20', '25', '30', '35', '40', '45', '50', '55'],
   ampm: ['AM', 'PM'],
 };
   const [prod, setProd] = useState(50);
@@ -139,19 +139,21 @@ const selections = {
             </div>
           ) : (
             <>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '15px', marginBottom: '20px' }}>
-                <div className="glass-card" style={{ padding: '15px', marginBottom: '15px' }}>
-  <p style={{ fontSize: '0.8rem', color: '#94a3b8' }}>Sleep Duration: {calculateDuration(bedtime, waketime)}h</p>
-  
-  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', height: '150px' }}>
-    {/* Bedtime Column */}
-    <div>
-      <span style={{ fontSize: '0.7rem' }}>Bedtime</span>
+              <div className="sleep-container-card">
+  <div className="sleep-header">
+    <span className="sleep-label">Sleep Duration</span>
+    <span className="sleep-value">{calculateDuration(bedtime, waketime)}h</span>
+  </div>
+
+  <div className="pickers-grid">
+    {/* Bedtime Section */}
+    <div className="picker-column-wrapper">
+      <div className="picker-title">Bedtime</div>
       <Picker value={bedtime} onChange={setBedtime} wheelMode="natural">
         {Object.keys(selections).map(name => (
           <Picker.Column key={name} name={name}>
             {selections[name].map(option => (
-              <Picker.Item key={option} value={option} style={{ fontSize: '0.8rem' }}>
+              <Picker.Item key={option} value={option}>
                 {option}
               </Picker.Item>
             ))}
@@ -160,14 +162,14 @@ const selections = {
       </Picker>
     </div>
 
-    {/* Waketime Column */}
-    <div>
-      <span style={{ fontSize: '0.7rem' }}>Wake Up</span>
+    {/* Wake Up Section */}
+    <div className="picker-column-wrapper">
+      <div className="picker-title">Wake Up</div>
       <Picker value={waketime} onChange={setWaketime} wheelMode="natural">
         {Object.keys(selections).map(name => (
           <Picker.Column key={name} name={name}>
             {selections[name].map(option => (
-              <Picker.Item key={option} value={option} style={{ fontSize: '0.8rem' }}>
+              <Picker.Item key={option} value={option}>
                 {option}
               </Picker.Item>
             ))}
@@ -181,7 +183,6 @@ const selections = {
                   <p style={{ fontSize: '0.8rem', marginBottom: '8px' }}><Activity size={14}/> {prod}% Productivity</p>
                   <input type="range" min="0" max="100" value={prod} onChange={(e) => setProd(parseInt(e.target.value))} style={{ width: '100%', cursor: 'pointer' }} />
                 </div>
-              </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 {['fajr', 'dhuhr', 'asr', 'maghrib', 'isha'].map(p => (
