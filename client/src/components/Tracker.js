@@ -14,7 +14,7 @@ const Tracker = () => {
   return (
     <div className="glass-card">
       <h2>Daily Salah Tracker</h2>
-      <p>Points: 1 (Qaza), 2 (Individual), 3 (Jamat)</p>
+      <p>Points: 1 (Qaza), 2 (Individual), 3 (Jammat)</p>
       
       <div className="productivity-bar-container">
         <div className="productivity-fill" style={{ width: `${calculateScore()}%` }}></div>
