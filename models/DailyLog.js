@@ -9,12 +9,12 @@ const DailyLogSchema = new mongoose.Schema({
   },
   date: { type: String, required: true }, // Format: YYYY-MM-DD
   salah: {
-    fajr: { type: Number, default: 0 },    // 1:Qaza, 2:Indiv, 3:Jamat
-    dhuhr: { type: Number, default: 0 },
-    asr: { type: Number, default: 0 },
-    maghrib: { type: Number, default: 0 },
-    isha: { type: Number, default: 0 }
-  },
+  fajr: { type: String, enum: ['Jammat', 'Individual', 'Qaza', 'Missed'], default: 'Missed' },
+  dhuhr: { type: String, enum: ['Jammat', 'Individual', 'Qaza', 'Missed'], default: 'Missed' },
+  asr: { type: String, enum: ['Jammat', 'Individual', 'Qaza', 'Missed'], default: 'Missed' },
+  maghrib: { type: String, enum: ['Jammat', 'Individual', 'Qaza', 'Missed'], default: 'Missed' },
+  isha: { type: String, enum: ['Jammat', 'Individual', 'Qaza', 'Missed'], default: 'Missed' }
+},
   sleepHours: { type: Number, min: 0, max: 24 },
   productivityPercentage: { type: Number, default: 0 }
 }, { timestamps: true });

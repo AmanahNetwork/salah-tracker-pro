@@ -22,7 +22,7 @@ const selections = {
   ampm: ['AM', 'PM'],
 };
   const [prod, setProd] = useState(50);
-  const [salah, setSalah] = useState({ fajr: 0, dhuhr: 0, asr: 0, maghrib: 0, isha: 0 });
+  const [salah, setSalah] = useState({ fajr: 'Missed', dhuhr: 'Missed', asr: 'Missed', maghrib: 'Missed', isha: 'Missed' });
   const [viewMode, setViewMode] = useState('month');
   const [isSubmitting, setIsSubmitting] = useState(false); 
 
@@ -39,7 +39,17 @@ const selections = {
       }
     }
   }, []);
+const [anchorDate, setAnchorDate] = useState(null);
 
+useEffect(() => {
+  const getAnchor = async () => {
+    try {
+      const res = await API.get('/logs/anchor-date');
+      setAnchorDate(res.data.anchorDate);
+    } catch (err) { console.error("Anchor fetch failed"); }
+  };
+  getAnchor();
+}, []);
   useEffect(() => { fetchHistory(); }, [fetchHistory]);
 
   const isAlreadyLogged = history.some(log => new Date(log.date).toISOString().split('T')[0] === today);
@@ -52,18 +62,51 @@ const selections = {
     return logDate >= limit;
   });
 
-  const stats = (() => {
-    if (filteredHistory.length === 0) return { sleep: "0", prod: "0", salah: "0" };
-    const offered = filteredHistory.reduce((acc, log) => 
-      acc + Object.values(log.salah || {}).filter(v => v > 0).length, 0);
+  const allStats = (() => {
+    if (filteredHistory.length === 0) return { sleep: "0", prod: "0", efficiency: "0", counts: [0,0,0,0], volume: 0, goal: 0 };
+
+    // --- SALAH WEIGHTED LOGIC ---
+    const counts = { Jamat: 0, Individual: 0, Qaza: 0, Missed: 0 };
+    let earnedPoints = 0;
+    let recordedPrayers = 0;
+
+    filteredHistory.forEach(log => {
+      Object.values(log.salah || {}).forEach(val => {
+        recordedPrayers++;
+        if (val === 3) { counts.Jamat++; earnedPoints += 3; }
+        else if (val === 2) { counts.Individual++; earnedPoints += 2; }
+        else if (val === 1) { counts.Qaza++; earnedPoints += 1; }
+        else counts.Missed++;
+      });
+    });
+
+    const now = new Date();
+    const rangeStart = new Date();
+    if (viewMode === 'week') rangeStart.setDate(now.getDate() - now.getDay() + 1);
+    else if (viewMode === 'month') rangeStart.setDate(1);
+    else rangeStart.setMonth(0, 1);
+
+    const effectiveStart = anchorDate && new Date(anchorDate) > rangeStart ? new Date(anchorDate) : rangeStart;
+    const daysInView = Math.ceil(Math.abs(new Date(today) - effectiveStart) / (1000 * 60 * 60 * 24)) + 1;
+    
+    const totalExpected = daysInView * 5;
+    const gap = totalExpected - recordedPrayers;
+    if (gap > 0) counts.Missed += gap;
+
+    const maxPossiblePoints = daysInView * 15;
+
+    // --- SLEEP & PROD LOGIC ---
     const totalSleep = filteredHistory.reduce((acc, l) => acc + (l.sleepHours || 0), 0);
-    const totalAvailableHours = filteredHistory.length * 24;
     const avgProd = filteredHistory.reduce((acc, l) => acc + (l.productivityPercentage || 0), 0) / filteredHistory.length;
+    const totalAvailableHours = filteredHistory.length * 24;
 
     return {
-      salah: ((offered / (filteredHistory.length * 5)) * 100).toFixed(1),
+      efficiency: maxPossiblePoints > 0 ? ((earnedPoints / maxPossiblePoints) * 100).toFixed(1) : "0",
       sleep: ((totalSleep / totalAvailableHours) * 100).toFixed(1),
-      prod: avgProd.toFixed(1)
+      prod: avgProd.toFixed(1),
+      counts: [counts.Jamat, counts.Individual, counts.Qaza, counts.Missed],
+      volume: recordedPrayers,
+      goal: daysInView * 5
     };
   })();
 
@@ -82,20 +125,6 @@ const selections = {
     } catch (err) { console.error(err); } 
     finally { setIsSubmitting(false); }
   };
-
-  const salahStats = () => {
-    let counts = { Jamat: 0, Individual: 0, Qaza: 0, Missed: 0 };
-    filteredHistory.forEach(log => {
-      Object.values(log.salah || {}).forEach(val => {
-        if (val === 3) counts.Jamat++;
-        else if (val === 2) counts.Individual++;
-        else if (val === 1) counts.Qaza++;
-        else counts.Missed++;
-      });
-    });
-    return [counts.Jamat, counts.Individual, counts.Qaza, counts.Missed];
-  };
-
   const chartLabels = filteredHistory.map(l => new Date(l.date).toLocaleDateString('en-US', { day: 'numeric', month: 'short' }));
 
   // Shared chart options for responsiveness
@@ -116,9 +145,9 @@ const selections = {
       {/* 1. TOP STATS - Responsive Grid */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))', gap: '10px', marginBottom: '20px' }}>
         {[
-          { label: 'SALAH', val: stats.salah, color: '#10b981' },
-          { label: 'SLEEP', val: stats.sleep, color: '#3b82f6' },
-          { label: 'PROD', val: stats.prod, color: '#f59e0b' }
+          { label: 'SALAH', val: allStats.efficiency, color: '#10b981' },
+          { label: 'SLEEP', val: allStats.sleep, color: '#3b82f6' },
+          { label: 'PROD', val: allStats.prod, color: '#f59e0b' }
         ].map(item => (
           <div key={item.label} className="glass-card" style={{ textAlign: 'center', padding: '15px' }}>
             <p style={{ fontSize: '0.7rem', color: '#94a3b8', margin: 0, fontWeight: 'bold' }}>{item.label}</p>
@@ -230,7 +259,7 @@ const selections = {
                <Pie 
                  data={{
                    labels: ['Jamat', 'Indiv', 'Qaza', 'Missed'],
-                   datasets: [{ data: salahStats(), backgroundColor: ['#10b981', '#3b82f6', '#f59e0b', '#ef4444'], borderWidth: 0 }]
+                   datasets: [{ data: allStats.counts, backgroundColor: ['#10b981', '#3b82f6', '#f59e0b', '#ef4444'], borderWidth: 0 }]
                  }} 
                  options={{ ...commonOptions, plugins: { ...commonOptions.plugins, legend: { position: 'bottom', labels: { color: 'white' } } } }} 
                />
