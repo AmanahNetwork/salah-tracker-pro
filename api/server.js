@@ -100,7 +100,7 @@ app.post('/api/logs/daily', async (req, res) => {
         sleepHours,      // Corrected name
         productivityPercentage // Corrected name
       },
-      { upsert: true, new: true }
+      { upsert: true, new: true,runValidators: true }
     );
 
     res.json(log);

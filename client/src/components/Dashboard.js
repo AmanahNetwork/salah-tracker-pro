@@ -1,17 +1,26 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import API from '../api/axios.js'; 
-import { Moon, CheckCircle, Loader2, Activity, PieChart as PieIcon, BarChart3 } from 'lucide-react';
+import { CheckCircle, Loader2, Activity, PieChart as PieIcon, BarChart3 } from 'lucide-react';
+import Picker from 'react-mobile-picker';
 import { Pie, Bar, Line } from 'react-chartjs-2';
 import { 
   Chart as ChartJS, CategoryScale, LinearScale, PointElement, 
   LineElement, BarElement, ArcElement, Title, Tooltip, Legend 
 } from 'chart.js';
-
+import { calculateDuration } from '../utils/timeHelpers'; 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, ArcElement, Title, Tooltip, Legend);
 
 const Dashboard = () => {
   const [history, setHistory] = useState([]);
-  const [sleep, setSleep] = useState(7);
+// Replace const [sleep, setSleep] = useState(7);
+const [bedtime, setBedtime] = useState({ hour: '11', minute: '00', ampm: 'PM' });
+const [waketime, setWaketime] = useState({ hour: '07', minute: '00', ampm: 'AM' });
+
+const selections = {
+  hour: ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'],
+  minute: ['00', '15', '30', '45'], // Increments of 15 make it easier to scroll
+  ampm: ['AM', 'PM'],
+};
   const [prod, setProd] = useState(50);
   const [salah, setSalah] = useState({ fajr: 0, dhuhr: 0, asr: 0, maghrib: 0, isha: 0 });
   const [viewMode, setViewMode] = useState('month');
@@ -61,10 +70,11 @@ const Dashboard = () => {
   const handleSave = async () => {
     if (isSubmitting || isAlreadyLogged) return;
     setIsSubmitting(true);
+    const totalSleep = calculateDuration(bedtime, waketime);
     try {
       await API.post('/logs/daily', { 
         salah, 
-        sleepHours: sleep, 
+        sleepHours: parseFloat(totalSleep), 
         productivityPercentage: prod, 
         date: today 
       });
@@ -130,10 +140,43 @@ const Dashboard = () => {
           ) : (
             <>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '15px', marginBottom: '20px' }}>
-                <div>
-                  <p style={{ fontSize: '0.8rem', marginBottom: '8px' }}><Moon size={14}/> {sleep}h Sleep</p>
-                  <input type="range" min="0" max="24" step="0.5" value={sleep} onChange={(e) => setSleep(parseFloat(e.target.value))} style={{ width: '100%', cursor: 'pointer' }} />
-                </div>
+                <div className="glass-card" style={{ padding: '15px', marginBottom: '15px' }}>
+  <p style={{ fontSize: '0.8rem', color: '#94a3b8' }}>Sleep Duration: {calculateDuration(bedtime, waketime)}h</p>
+  
+  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', height: '150px' }}>
+    {/* Bedtime Column */}
+    <div>
+      <span style={{ fontSize: '0.7rem' }}>Bedtime</span>
+      <Picker value={bedtime} onChange={setBedtime} wheelMode="natural">
+        {Object.keys(selections).map(name => (
+          <Picker.Column key={name} name={name}>
+            {selections[name].map(option => (
+              <Picker.Item key={option} value={option} style={{ fontSize: '0.8rem' }}>
+                {option}
+              </Picker.Item>
+            ))}
+          </Picker.Column>
+        ))}
+      </Picker>
+    </div>
+
+    {/* Waketime Column */}
+    <div>
+      <span style={{ fontSize: '0.7rem' }}>Wake Up</span>
+      <Picker value={waketime} onChange={setWaketime} wheelMode="natural">
+        {Object.keys(selections).map(name => (
+          <Picker.Column key={name} name={name}>
+            {selections[name].map(option => (
+              <Picker.Item key={option} value={option} style={{ fontSize: '0.8rem' }}>
+                {option}
+              </Picker.Item>
+            ))}
+          </Picker.Column>
+        ))}
+      </Picker>
+    </div>
+  </div>
+</div>
                 <div>
                   <p style={{ fontSize: '0.8rem', marginBottom: '8px' }}><Activity size={14}/> {prod}% Productivity</p>
                   <input type="range" min="0" max="100" value={prod} onChange={(e) => setProd(parseInt(e.target.value))} style={{ width: '100%', cursor: 'pointer' }} />
