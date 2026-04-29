@@ -117,7 +117,7 @@ useEffect(() => {
     try {
       await API.post('/logs/daily', { 
         salah, 
-        sleepHours: parseFloat(totalSleep), 
+        sleepHours: Number(totalSleep), 
         productivityPercentage: prod, 
         date: today 
       });
