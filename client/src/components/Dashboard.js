@@ -113,17 +113,34 @@ useEffect(() => {
   const handleSave = async () => {
     if (isSubmitting || isAlreadyLogged) return;
     setIsSubmitting(true);
+
     const totalSleep = calculateDuration(bedtime, waketime);
+    
+    // Map the numeric state (0-3) to the string labels the backend expects
+    const statusMap = { 0: 'Missed', 1: 'Qaza', 2: 'Individual', 3: 'Jamat' };
+
+    const salahStrings = {
+      fajr: statusMap[salah.fajr],
+      dhuhr: statusMap[salah.dhuhr],
+      asr: statusMap[salah.asr],
+      maghrib: statusMap[salah.maghrib],
+      isha: statusMap[salah.isha]
+    };
+
     try {
       await API.post('/logs/daily', { 
-        salah, 
+        salah: salahStrings, // Send the converted strings
         sleepHours: Number(totalSleep), 
-        productivityPercentage: prod, 
+        productivityPercentage: Number(prod), 
         date: today 
       });
       await fetchHistory();
-    } catch (err) { console.error(err); } 
-    finally { setIsSubmitting(false); }
+    } catch (err) { 
+      console.error("Sync Error:", err.response?.data?.message || err.message); 
+    } 
+    finally { 
+      setIsSubmitting(false); 
+    }
   };
   const chartLabels = filteredHistory.map(l => new Date(l.date).toLocaleDateString('en-US', { day: 'numeric', month: 'short' }));
 
