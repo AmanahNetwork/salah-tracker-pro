@@ -4,11 +4,10 @@ const cors = require('cors');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const path = require('path');
+const app = express();
 const logRoutes = require('./routes/logs');
 app.use('/api/logs', logRoutes);
 require('dotenv').config();
-
-const app = express();
 const PORT = process.env.PORT || 5000;
 
 const User = require('../models/User');
