@@ -66,14 +66,14 @@ useEffect(() => {
     if (filteredHistory.length === 0) return { sleep: "0", prod: "0", efficiency: "0", counts: [0,0,0,0], volume: 0, goal: 0 };
 
     // --- SALAH WEIGHTED LOGIC ---
-    const counts = { Jamat: 0, Individual: 0, Qaza: 0, Missed: 0 };
+    const counts = { Jammat: 0, Individual: 0, Qaza: 0, Missed: 0 };
     let earnedPoints = 0;
     let recordedPrayers = 0;
 
     filteredHistory.forEach(log => {
       Object.values(log.salah || {}).forEach(val => {
         recordedPrayers++;
-        if (val === 3) { counts.Jamat++; earnedPoints += 3; }
+        if (val === 3) { counts.Jammat++; earnedPoints += 3; }
         else if (val === 2) { counts.Individual++; earnedPoints += 2; }
         else if (val === 1) { counts.Qaza++; earnedPoints += 1; }
         else counts.Missed++;
@@ -104,7 +104,7 @@ useEffect(() => {
       efficiency: maxPossiblePoints > 0 ? ((earnedPoints / maxPossiblePoints) * 100).toFixed(1) : "0",
       sleep: ((totalSleep / totalAvailableHours) * 100).toFixed(1),
       prod: avgProd.toFixed(1),
-      counts: [counts.Jamat, counts.Individual, counts.Qaza, counts.Missed],
+      counts: [counts.Jammat, counts.Individual, counts.Qaza, counts.Missed],
       volume: recordedPrayers,
       goal: daysInView * 5
     };
@@ -275,7 +275,7 @@ useEffect(() => {
             <div style={{ height: '250px', position: 'relative' }}>
                <Pie 
                  data={{
-                   labels: ['Jamat', 'Indiv', 'Qaza', 'Missed'],
+                   labels: ['Jammat', 'Indiv', 'Qaza', 'Missed'],
                    datasets: [{ data: allStats.counts, backgroundColor: ['#10b981', '#3b82f6', '#f59e0b', '#ef4444'], borderWidth: 0 }]
                  }} 
                  options={{ ...commonOptions, plugins: { ...commonOptions.plugins, legend: { position: 'bottom', labels: { color: 'white' } } } }} 
