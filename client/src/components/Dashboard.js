@@ -117,7 +117,7 @@ useEffect(() => {
     const totalSleep = calculateDuration(bedtime, waketime);
     
     // Map the numeric state (0-3) to the string labels the backend expects
-    const statusMap = { 0: 'Missed', 1: 'Qaza', 2: 'Individual', 3: 'Jamat' };
+    const statusMap = { 0: 'Missed', 1: 'Qaza', 2: 'Individual', 3: 'Jammat' };
 
     const salahStrings = {
       fajr: statusMap[salah.fajr],
